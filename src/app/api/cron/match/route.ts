@@ -8,15 +8,20 @@ import type { ChannelConfig } from '@/lib/types'
 
 export const maxDuration = 300
 
-// Each new alert costs one LLM call (generateBrief) — sequential. Cap per run so we don't
-// blow maxDuration; dedup makes it resumable, so following runs (or the daily cron) drain
-// the rest. In steady state only a few norms are new per day, well under the cap.
+// Each new alert costs one LLM call (generateBrief) + channel dispatch. Cap per run so we
+// don't blow maxDuration; dedup makes it resumable, so following runs (or the daily cron)
+// drain the rest. In steady state only a few norms are new per day, well under the cap.
 const MAX_NEW_ALERTS_PER_RUN = 20
+// Alerts processed concurrently. The slow part (brief + dispatch) runs in parallel across
+// this many workers instead of one-at-a-time; 5 keeps us under Anthropic/channel rate limits.
+const CONCURRENCY = 5
 
 type Company = {
   id: string; name: string; company_type: string
   sectors: string[]; channels: ChannelConfig[]
 }
+type Norm = Awaited<ReturnType<typeof normsForProfile>>[number]
+type WorkItem = { company: Company; norm: Norm; normId: string }
 
 // POST for manual curl; GET for Vercel Cron (it invokes via GET with the
 // Authorization: Bearer $CRON_SECRET header when CRON_SECRET is set).
@@ -30,20 +35,16 @@ async function handle(req: NextRequest) {
   const { data: existing } = await db.from('alerts').select('company_id, norm_id')
   const seen = new Set((existing ?? []).map((a) => `${a.company_id}:${a.norm_id}`))
 
-  let alertsCreated = 0
+  // Phase 1 — build the work list (fast DB queries only). Cap here, before the expensive work.
+  const work: WorkItem[] = []
   let capped = false
-  const channelStats: Record<string, number> = {}
-
   for (const company of (companies ?? []) as Company[]) {
-    if (capped) break
+    if (work.length >= MAX_NEW_ALERTS_PER_RUN) { capped = true; break }
     if (!company.sectors?.length) continue // no profile → nothing to match
 
     // Reuse the matching behind the `normas_que_me_aplican` MCP tool.
     const applicable = await normsForProfile({
-      tipoEmpresa: company.company_type,
-      sectores: company.sectors,
-      severidadMin: 'low',
-      limit: 50,
+      tipoEmpresa: company.company_type, sectores: company.sectors, severidadMin: 'low', limit: 50,
     })
     if (!applicable.length) continue
 
@@ -53,36 +54,48 @@ async function handle(req: NextRequest) {
     const idByExt = new Map((idRows ?? []).map((r) => [r.external_id, r.id]))
 
     for (const norm of applicable) {
-      if (alertsCreated >= MAX_NEW_ALERTS_PER_RUN) { capped = true; break }
+      if (work.length >= MAX_NEW_ALERTS_PER_RUN) { capped = true; break }
       const normId = idByExt.get(norm.external_id)
       if (!normId || seen.has(`${company.id}:${normId}`)) continue
+      seen.add(`${company.id}:${normId}`) // guard against the same norm twice within this run
+      work.push({ company, norm, normId })
+    }
+  }
 
-      // One model call per alert: the brief carries what changed, why it affects them,
-      // what they risk by doing nothing and the steps — and impact/recommendation are
-      // derived from it instead of asking the model a second time.
-      const brief = await generateBrief(norm, company).catch((e) => {
-        console.error(`brief failed for ${company.id}:${normId}:`, e)
-        return null
-      })
-      const { impact, recommendation } = brief
-        ? briefToAlertFields(brief)
-        : { impact: norm.summary ?? norm.title, recommendation: 'Revisa la norma con tu contador.' }
+  // One alert: brief (1 LLM call) → insert → dispatch to the company's channels.
+  const processOne = async ({ company, norm, normId }: WorkItem): Promise<string[]> => {
+    const brief = await generateBrief(norm, company).catch((e) => {
+      console.error(`brief failed for ${company.id}:${normId}:`, e)
+      return null
+    })
+    const { impact, recommendation } = brief
+      ? briefToAlertFields(brief)
+      : { impact: norm.summary ?? norm.title, recommendation: 'Revisa la norma con tu contador.' }
 
-      // brief goes in the same insert: no extra round-trip to store it.
-      const { data: alert } = await db.from('alerts')
-        .insert({ company_id: company.id, norm_id: normId, impact, recommendation, brief })
-        .select('id').single()
-      seen.add(`${company.id}:${normId}`)
+    const { data: alert } = await db.from('alerts')
+      .insert({ company_id: company.id, norm_id: normId, impact, recommendation, brief })
+      .select('id').single()
+
+    const { delivered } = await deliverAlert(company.channels ?? [], {
+      norm_title: norm.title, norm_url: norm.url, impact, recommendation,
+      norm_issuer: norm.issuer, norm_source: norm.source,
+      severity: (norm.severity ?? 'low') as 'low' | 'medium' | 'high',
+      brief,
+      guide_url: alert ? guideUrl(alert.id) : null,
+    })
+    return delivered
+  }
+
+  // Phase 2 — process the work list in concurrent batches.
+  let alertsCreated = 0
+  const channelStats: Record<string, number> = {}
+  for (let i = 0; i < work.length; i += CONCURRENCY) {
+    const batch = work.slice(i, i + CONCURRENCY)
+    const results = await Promise.allSettled(batch.map(processOne))
+    for (const r of results) {
+      if (r.status !== 'fulfilled') { console.error('alert failed:', r.reason); continue }
       alertsCreated++
-
-      const { delivered } = await deliverAlert(company.channels ?? [], {
-        norm_title: norm.title, norm_url: norm.url, impact, recommendation,
-        norm_issuer: norm.issuer, norm_source: norm.source,
-        severity: (norm.severity ?? 'low') as 'low' | 'medium' | 'high',
-        brief,
-        guide_url: alert ? guideUrl(alert.id) : null,
-      })
-      delivered.forEach((t) => { channelStats[t] = (channelStats[t] ?? 0) + 1 })
+      r.value.forEach((t) => { channelStats[t] = (channelStats[t] ?? 0) + 1 })
     }
   }
 
