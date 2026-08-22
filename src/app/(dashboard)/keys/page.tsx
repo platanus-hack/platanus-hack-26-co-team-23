@@ -106,9 +106,6 @@ export default async function KeysPage() {
         </Card>
       )}
 
-      {/* MCP Setup Instructions */}
-      <McpSetupInstructions />
-
       {/* Keys Table */}
       <Card>
         <CardHeader>
@@ -182,6 +179,9 @@ export default async function KeysPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* MCP Setup Instructions */}
+      <McpSetupInstructions />
     </div>
   );
 }
