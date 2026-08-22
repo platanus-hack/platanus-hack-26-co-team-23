@@ -3,10 +3,13 @@ import { suin } from './sources/suin'
 import { dian } from './sources/dian'
 import { superfinanciera } from './sources/superfinanciera'
 import { sic } from './sources/sic'
+import { legalize } from './sources/legalize'
+import { corteConstitucional } from './sources/corte-constitucional'
+import { croma } from './sources/croma'
 import type { SourceAdapter } from './types'
 
 // Adding a new source (leychile, diario oficial...) = 1 file in sources/ + 1 line here.
-export const SOURCES: SourceAdapter[] = [suin, dian, superfinanciera, sic]
+export const SOURCES: SourceAdapter[] = [suin, dian, superfinanciera, sic, legalize, corteConstitucional, croma]
 export async function ingestAll(limitPerSource = 25): Promise<Record<string, number>> {
   const db = supabaseAdmin()
   const stats: Record<string, number> = {}
