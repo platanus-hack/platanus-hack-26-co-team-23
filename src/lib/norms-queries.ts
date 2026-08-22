@@ -78,22 +78,44 @@ export async function remediationPlan(opts: { norma: string; stack?: string }) {
     .not('analyzed_at', 'is', null).limit(1).maybeSingle()).data
   if (!norm) return { error: `No encontré una norma que coincida con "${opts.norma}".` }
 
+  // tool_use forzado: salida estructurada garantizada, robusta ante bloques de thinking
   const msg = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 1500,
-    system: `Eres un ingeniero senior que traduce una norma colombiana en un plan concreto de cambios de código para cumplirla. Responde SOLO JSON:
-{"resumen":"1-2 frases de qué exige la norma a nivel técnico",
- "cambios":[{"area":"componente/archivo típico afectado","cambio":"qué modificar","razon":"qué obligación lo exige"}],
- "verificacion":"cómo probar que se cumple",
- "riesgo_si_no":"consecuencia de no cumplir"}
-Sé concreto y accionable. Si la norma no implica cambios de software, cambios=[] y explícalo en resumen.`,
+    max_tokens: 2500,
+    tools: [{
+      name: 'registrar_plan',
+      description: 'Registra el plan de remediación de código para cumplir una norma',
+      input_schema: {
+        type: 'object',
+        properties: {
+          resumen: { type: 'string', description: 'Qué exige la norma a nivel técnico (1-2 frases)' },
+          cambios: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                area: { type: 'string', description: 'Componente/archivo típico afectado' },
+                cambio: { type: 'string', description: 'Qué modificar' },
+                razon: { type: 'string', description: 'Qué obligación lo exige' },
+              },
+              required: ['area', 'cambio', 'razon'],
+            },
+          },
+          verificacion: { type: 'string' },
+          riesgo_si_no: { type: 'string' },
+        },
+        required: ['resumen', 'cambios', 'verificacion', 'riesgo_si_no'],
+      },
+    }],
+    tool_choice: { type: 'tool', name: 'registrar_plan' },
+    system: 'Eres un ingeniero senior que traduce una norma colombiana en un plan concreto de cambios de código para cumplirla. Sé accionable. Si la norma no implica cambios de software, cambios=[] y explícalo en resumen.',
     messages: [{
       role: 'user',
       content: `NORMA: ${norm.title}\nRESUMEN: ${norm.summary}\nOBLIGACIONES: ${JSON.stringify(norm.obligations)}` +
         (opts.stack ? `\n\nSTACK DEL CLIENTE: ${opts.stack}` : ''),
     }],
   })
-  const text = msg.content[0].type === 'text' ? msg.content[0].text : '{}'
-  const plan = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1))
+  const block = msg.content.find((b) => b.type === 'tool_use')
+  const plan = block && block.type === 'tool_use' ? block.input : {}
   return { norma: norm.title, norm_id: norm.external_id, url: norm.url, ...plan }
 }
