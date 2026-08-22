@@ -1,6 +1,7 @@
 import { createMcpHandler } from 'mcp-handler'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { validateApiKey, unauthorized } from '@/lib/api-keys'
 import { SECTORS } from '@/lib/types'
 
 const NORM_FIELDS = 'title, issuer, norm_type, published_at, summary, sectors, obligations, severity, url'
@@ -41,4 +42,10 @@ const handler = createMcpHandler((server) => {
   )
 })
 
-export { handler as GET, handler as POST }
+// Acceso con API key (generada en /keys). MASTER_API_KEY del env = key de demo rotable.
+const guarded = async (req: Request) => {
+  if (!(await validateApiKey(req))) return unauthorized()
+  return handler(req)
+}
+
+export { guarded as GET, guarded as POST }

@@ -6,19 +6,22 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 
 const API = process.env.COMPLAI_API_URL ?? 'https://complai-co.vercel.app'
+const API_KEY = process.env.COMPLAI_API_KEY ?? ''
 const SECTORS = ['fintech', 'salud', 'alimentos', 'transporte', 'construccion',
   'comercio', 'tecnologia', 'datos-personales', 'laboral-general', 'tributario-general']
 
 async function fetchNorms(params) {
   const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null && v !== ''))
-  const res = await fetch(`${API}/api/public/norms?${qs}`)
+  const res = await fetch(`${API}/api/public/norms?${qs}`, { headers: { 'x-api-key': API_KEY } })
+  if (res.status === 401)
+    throw new Error('API key requerida: exporta COMPLAI_API_KEY (genérala en https://complai-co.vercel.app/keys)')
   if (!res.ok) throw new Error(`complAI API ${res.status}`)
   return res.json()
 }
 
 const asText = (data) => ({ content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] })
 
-const server = new McpServer({ name: 'complai', version: '0.2.0' })
+const server = new McpServer({ name: 'complai', version: '0.3.0' })
 
 server.tool(
   'buscar_normas',

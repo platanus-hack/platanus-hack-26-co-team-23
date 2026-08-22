@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { validateApiKey, unauthorized } from '@/lib/api-keys'
 
-// API pública read-only: la superficie que consume el paquete npm complai-mcp.
-// Solo normas ya analizadas; las normas son datos públicos.
+// API read-only con API key: la superficie que consume el paquete npm complai-mcp.
+// Solo normas ya analizadas; el control de acceso es por key generada en /keys.
 export async function GET(req: NextRequest) {
+  if (!(await validateApiKey(req))) return unauthorized()
   const { searchParams } = new URL(req.url)
   const sector = searchParams.get('sector')
   const q = searchParams.get('q')
