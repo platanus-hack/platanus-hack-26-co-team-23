@@ -100,6 +100,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ale
   const { delivered, failed } = await deliverAlert(
     channels,
     {
+      alert_id: alertId,
       norm_title: norm.title,
       norm_url: norm.url,
       norm_issuer: norm.issuer,

@@ -2,6 +2,8 @@ import type { ChannelConfig } from '@/lib/types'
 import type { Brief } from '@/lib/alerts/brief'
 
 export type AlertPayload = {
+  // Lets voice point Twilio at the signed TwiML endpoint instead of inlining it.
+  alert_id?: string
   norm_title: string
   norm_url: string | null
   // Who issued it and which official portal it came from — shown in every channel
