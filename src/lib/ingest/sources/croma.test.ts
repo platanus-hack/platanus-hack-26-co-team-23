@@ -2,28 +2,36 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mapConsejoDeEstadoRow, extractRows, croma } from './croma'
 
 describe('mapConsejoDeEstadoRow', () => {
-  it('maps a row per the documented field names', () => {
+  it('maps a real row (verified live against api.croma.run)', () => {
     const row = mapConsejoDeEstadoRow({
-      radicado: '11001-03-27-000-2023-00045-00',
+      radicado: '15001-23-33-000-2015-00649-01',
       tipo: 'SENTENCIA',
-      seccion: 'Sección Cuarta',
-      fecha: '2026-06-12',
-      ponente: 'Julio Roberto Piza Rodríguez',
-      norma_demandada: 'Decreto 1625 de 2016, art. 1.6.1.13.2.31',
-      demandante: 'Empresa XYZ S.A.S.',
-      url: 'https://www.consejodeestado.gov.co/providencia/xyz',
-      es_unificacion: true,
+      seccion: 'SECCIÓN SEGUNDA',
+      fecha: '2022-02-24',
+      ponente: 'CÉSAR PALOMINO CORTÉS',
+      demandante: 'LUIS ALBERTO ECHEVERRÍA CASTILLO',
+      demandado: 'ADMINISTRADORA COLOMBIANA DE PENSIONES – COLPENSIONES',
+      norma_demandada: null,
+      descriptores: ['PENSIÓN ORDINARIA DE JUBILACIÓN', 'RÉGIMEN DE TRANSICIÓN'],
+      es_unificacion: false,
+      es_extension: false,
+      url: 'https://servicios.consejodeestado.gov.co/WebRelatoria/FileReferenceServlet?corp=ce&ext=html&file=2193853',
     })
     expect(row).toEqual({
-      external_id: 'croma-ce-11001-03-27-000-2023-00045-00',
+      external_id: 'croma-ce-15001-23-33-000-2015-00649-01',
       source: 'croma',
-      title: 'SENTENCIA 11001-03-27-000-2023-00045-00 — Consejo de Estado (Sección Cuarta)',
+      title: 'SENTENCIA 15001-23-33-000-2015-00649-01 — Consejo de Estado (SECCIÓN SEGUNDA)',
       issuer: 'Consejo de Estado',
       norm_type: 'sentencia',
-      published_at: '2026-06-12',
-      url: 'https://www.consejodeestado.gov.co/providencia/xyz',
-      raw_text: expect.stringContaining('unificación'),
+      published_at: '2022-02-24',
+      url: 'https://servicios.consejodeestado.gov.co/WebRelatoria/FileReferenceServlet?corp=ce&ext=html&file=2193853',
+      raw_text: expect.stringContaining('RÉGIMEN DE TRANSICIÓN'),
     })
+  })
+
+  it('joins multiple descriptores with a semicolon', () => {
+    const row = mapConsejoDeEstadoRow({ radicado: '1', fecha: '2022-01-01', descriptores: ['A', 'B'] })
+    expect(row?.raw_text).toContain('Descriptores: A; B')
   })
 
   it('returns null without a radicado or a fecha', () => {
@@ -33,14 +41,17 @@ describe('mapConsejoDeEstadoRow', () => {
 })
 
 describe('extractRows', () => {
-  it('finds the row array regardless of its key name', () => {
+  it('finds the row array nested under data.results — the real shape, verified live', () => {
+    expect(extractRows({ data: { total: 1, results: [{ radicado: '1' }] } })).toEqual([{ radicado: '1' }])
+  })
+
+  it('also accepts the row array at the top level, in case the API stops nesting it', () => {
     expect(extractRows({ total: 1, results: [{ radicado: '1' }] })).toEqual([{ radicado: '1' }])
-    expect(extractRows({ total: 1, rows: [{ radicado: '2' }] })).toEqual([{ radicado: '2' }])
-    expect(extractRows({ total: 1, data: [{ radicado: '3' }] })).toEqual([{ radicado: '3' }])
+    expect(extractRows({ rows: [{ radicado: '2' }] })).toEqual([{ radicado: '2' }])
   })
 
   it('returns an empty array for a shape with no row array', () => {
-    expect(extractRows({ total: 0 })).toEqual([])
+    expect(extractRows({ data: { total: 0 } })).toEqual([])
     expect(extractRows(null)).toEqual([])
   })
 })
@@ -57,15 +68,17 @@ describe('croma.fetch', () => {
     await expect(croma.fetch(10)).rejects.toThrow('CROMA_API_KEY not set')
   })
 
-  it('sends the bearer key and a bounded per_page, and sorts the result by real date', async () => {
+  it('sends the bearer key and a bounded per_page, unwraps data.results, and sorts by real date', async () => {
     process.env.CROMA_API_KEY = 'croma_test_123'
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        results: [
-          { radicado: 'A', fecha: '2026-01-01' },
-          { radicado: 'B', fecha: '2026-06-01' },
-        ],
+        data: {
+          results: [
+            { radicado: 'A', fecha: '2022-01-01' },
+            { radicado: 'B', fecha: '2022-06-01' },
+          ],
+        },
       }),
     })
     vi.stubGlobal('fetch', fetchMock)

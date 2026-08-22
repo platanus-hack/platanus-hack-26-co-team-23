@@ -6,19 +6,26 @@ import type { SourceAdapter, SourceNorm } from '../types'
 // this adapter targets Consejo de Estado case law instead: real jurisprudence content
 // that no other source in this pipeline covers.
 //
-// Endpoint contract per docs.usecroma.com/guides/colombia/consejo-estado.md (verified
-// 2026-08-22). NOT verified against a live response — no CROMA_API_KEY was provisioned
-// at the time this was written, so `fetch` fails fast (caught by ingestAll, source
-// marked down) until a key is set. If Croma's actual field names differ, only
-// `mapConsejoDeEstadoRow` / `extractRows` need to change.
+// Endpoint contract per docs.usecroma.com/guides/colombia/consejo-estado.md, verified
+// live 2026-08-22 against a real key. Two things the docs got wrong or left out:
+//   1. The payload is wrapped one level deeper than documented: `{ data: { ...total,
+//      count, results } }`, not `{ total, count, results }` at the top level.
+//   2. `descriptores` is an array of strings, not a single string.
+// Also found live and NOT a bug: this endpoint's Consejo de Estado corpus currently ends
+// at 2022-02-24 — every query for 2023+ returns `total: 0`, regardless of `tipo`. Same
+// shape as the SIC source elsewhere in this pipeline (stuck in 2023): it's real content,
+// but it will not produce new rulings going forward until Croma's own index catches up.
 const ENDPOINT = 'https://api.croma.run/co/consejo-estado/search/v1'
 
-// The daily quota is tight (100 req/day/org) and the docs don't mention a sort param, so
-// we don't paginate: one request, `per_page` at the documented max, sorted by real date
-// client-side — same fix as the SFC/DIAN "trusted the wrong order" bugs found earlier in
-// this pipeline (see PR #23).
+// The daily quota is tight (100 req/day/org — confirmed via the `ratelimit-policy`
+// response header) so we don't paginate: one request, `per_page` at the documented max,
+// sorted by real date client-side — same fix as the SFC/DIAN "trusted the wrong order"
+// bugs found earlier in this pipeline (see PR #23).
 const MAX_PER_PAGE = 20
-const LOOKBACK_DAYS = 180
+// Wide on purpose: the corpus currently tops out ~4.5 years back (see note above). A
+// tight recent window would silently return zero rows forever; this one still finds
+// the newest available rulings today and keeps working if Croma's index catches up.
+const LOOKBACK_DAYS = 5 * 365
 
 type ConsejoEstadoRow = {
   radicado?: string
@@ -28,8 +35,8 @@ type ConsejoEstadoRow = {
   ponente?: string
   demandante?: string
   demandado?: string
-  norma_demandada?: string
-  descriptores?: string
+  norma_demandada?: string | null
+  descriptores?: string[]
   es_unificacion?: boolean
   es_extension?: boolean
   url?: string
@@ -58,24 +65,33 @@ export function mapConsejoDeEstadoRow(row: ConsejoEstadoRow): SourceNorm | null 
       row.norma_demandada && `Norma demandada: ${row.norma_demandada}`,
       row.demandante && `Demandante: ${row.demandante}`,
       row.demandado && `Demandado: ${row.demandado}`,
-      row.descriptores && `Descriptores: ${row.descriptores}`,
+      row.descriptores?.length && `Descriptores: ${row.descriptores.join('; ')}`,
       tags.length && `(${tags.join(', ')})`,
     ].filter(Boolean).join('\n'),
   }
 }
 
-// The docs describe the response as "total, count, and the matching rows" without ever
-// showing a full JSON example or naming the array field. Rather than hardcode a guess,
-// take the first array found under any of the plausible names.
+// The docs never show a full response example. Verified live: the row array is at
+// `body.data.results`, one level deeper than documented. Kept defensive anyway — check
+// a couple of plausible names, and at both the top level and one level under `data` —
+// rather than hardcoding the exact nesting, in case Croma changes it again.
 const ROW_ARRAY_KEYS = ['results', 'rows', 'data', 'items'] as const
+
+function findRowArray(obj: unknown): ConsejoEstadoRow[] | null {
+  if (!obj || typeof obj !== 'object') return null
+  for (const key of ROW_ARRAY_KEYS) {
+    const value = (obj as Record<string, unknown>)[key]
+    if (Array.isArray(value)) return value as ConsejoEstadoRow[]
+  }
+  return null
+}
 
 export function extractRows(body: unknown): ConsejoEstadoRow[] {
   if (!body || typeof body !== 'object') return []
-  for (const key of ROW_ARRAY_KEYS) {
-    const value = (body as Record<string, unknown>)[key]
-    if (Array.isArray(value)) return value as ConsejoEstadoRow[]
-  }
-  return []
+  const direct = findRowArray(body)
+  if (direct) return direct
+  const nested = findRowArray((body as Record<string, unknown>).data)
+  return nested ?? []
 }
 
 function isoDate(d: Date) {
