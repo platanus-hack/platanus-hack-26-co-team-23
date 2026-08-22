@@ -2,6 +2,7 @@ import { createMcpHandler } from 'mcp-handler'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { validateApiKey, unauthorized } from '@/lib/api-keys'
+import { rateLimit, tooManyRequests } from '@/lib/rate-limit'
 import { SECTORS } from '@/lib/types'
 
 const NORM_FIELDS = 'title, issuer, norm_type, published_at, summary, sectors, obligations, severity, url'
@@ -42,8 +43,10 @@ const handler = createMcpHandler((server) => {
   )
 })
 
-// Acceso con API key (generada en /keys). MASTER_API_KEY del env = key de demo rotable.
+// Rate limit (por key/IP) + API key. El límite va primero para frenar brute-force pre-auth.
 const guarded = async (req: Request) => {
+  const rl = await rateLimit(req)
+  if (!rl.ok) return tooManyRequests(rl.retryAfter)
   if (!(await validateApiKey(req))) return unauthorized()
   return handler(req)
 }
