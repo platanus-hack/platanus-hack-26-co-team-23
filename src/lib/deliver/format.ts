@@ -6,6 +6,12 @@ const EMOJI: Record<string, string> = { high: '🔴', medium: '🟠', low: '🟡
 
 const FOOTER = '_complAI · esto no constituye asesoría jurídica_'
 
+// Cap text to a channel's hard limit (Discord content = 2000, Google Chat text = 4096).
+// The full detail always lives in the PDF guide, so trimming the chat message is safe.
+export function clip(text: string, max: number): string {
+  return text.length <= max ? text : text.slice(0, max - 1).trimEnd() + '…'
+}
+
 export function formatAlertText(p: AlertPayload): string {
   const origin = sourceLine(p.norm_issuer, p.norm_source)
   const head = [
