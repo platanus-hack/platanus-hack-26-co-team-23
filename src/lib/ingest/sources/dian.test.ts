@@ -36,4 +36,20 @@ describe('extractDianDate', () => {
   it('cae al 1-ene si el mes no es reconocible', () => {
     expect(extractDianDate('RESOLUCIÓN 1 DE 2026 (brumario 12)', 2026)).toBe('2026-01-01')
   })
+
+  // Regresion: con .match() el primer "(palabra dd)" que no fuera mes mataba la fecha en
+  // silencio. Caso real: resolucion_dian_0196_2025 trae "(Casilla 2)" en el cuerpo.
+  it('sigue buscando si el primer candidato no es un mes', () => {
+    expect(extractDianDate('Ver (Casilla 2) — RESOLUCIÓN 196 DE 2025 (febrero 28)', 2025)).toBe('2025-02-28')
+  })
+
+  it('no confunde un 1-ene real con el fallback', () => {
+    expect(extractDianDate('RESOLUCIÓN 4 DE 2026 (enero 1)', 2026)).toBe('2026-01-01')
+  })
+
+  // El encabezado vive al arranque; un mes citado en el cuerpo no debe ganar.
+  it('ignora fechas que aparecen tarde en el documento', () => {
+    const tarde = 'RESOLUCION SIN FECHA '.padEnd(2500, '.') + ' (agosto 15)'
+    expect(extractDianDate(tarde, 2026)).toBe('2026-01-01')
+  })
 })
