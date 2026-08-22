@@ -7,6 +7,7 @@ import { sourceLine } from "@/lib/sources";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AlertsLive } from "./alerts-live";
 
 type AlertWithNorm = Alert & { norm: Norm };
 
@@ -54,6 +55,7 @@ export default async function FeedPage() {
   if (!company) {
     return (
       <div className="max-w-2xl">
+        <AlertsLive />
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Alertas</h1>
           <p className="text-muted-foreground">
@@ -78,6 +80,7 @@ export default async function FeedPage() {
   if (alerts.length === 0) {
     return (
       <div className="max-w-2xl">
+        <AlertsLive />
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Alertas</h1>
           <p className="text-muted-foreground">
@@ -98,6 +101,7 @@ export default async function FeedPage() {
 
   return (
     <div className="max-w-4xl">
+      <AlertsLive />
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Alertas</h1>
         <p className="text-muted-foreground">
