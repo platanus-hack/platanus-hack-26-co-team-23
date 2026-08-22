@@ -2,7 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { anthropic, MODEL } from '@/lib/llm'
 
 export const NORM_FIELDS =
-  'external_id, title, issuer, norm_type, published_at, summary, sectors, company_types, obligations, severity, url'
+  'external_id, title, issuer, source, norm_type, published_at, summary, sectors, company_types, obligations, severity, url'
 
 const RANK: Record<string, number> = { low: 1, medium: 2, high: 3 }
 const atOrAbove = (min: string) => Object.keys(RANK).filter((s) => RANK[s] >= (RANK[min] ?? 1))
