@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { Alert, Norm } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 type AlertWithNorm = Alert & { norm: Norm };
 
@@ -63,11 +64,8 @@ export default async function FeedPage() {
             <p className="text-muted-foreground mb-4">
               Tu organización aún no ha configurado CumplIA. Completa tu configuración de empresa para empezar a recibir alertas.
             </p>
-            <Link
-              href="/settings"
-              className="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground px-4 h-8 font-medium transition-all hover:bg-primary/80"
-            >
-              Ir a Configuración
+            <Link href="/settings">
+              <Button>Ir a Configuración</Button>
             </Link>
           </CardContent>
         </Card>
@@ -171,9 +169,10 @@ export default async function FeedPage() {
                       href={alert.norm.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center rounded-lg border border-border bg-background hover:bg-muted text-sm px-2.5 h-7 font-medium transition-all"
                     >
-                      Ver norma
+                      <Button variant="outline" size="sm">
+                        Ver norma
+                      </Button>
                     </a>
                   )}
                   {alert.pr_url && (
@@ -181,9 +180,10 @@ export default async function FeedPage() {
                       href={alert.pr_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center rounded-lg border border-border bg-background hover:bg-muted text-sm px-2.5 h-7 font-medium transition-all"
                     >
-                      Ver PR
+                      <Button variant="outline" size="sm">
+                        Ver PR
+                      </Button>
                     </a>
                   )}
                 </div>

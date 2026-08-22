@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Toggle } from "@/components/ui/toggle";
 
 type ChannelState = {
   type: string;
@@ -140,18 +141,14 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
             <Label>Tipo de sociedad</Label>
             <div className="flex flex-wrap gap-2">
               {COMPANY_TYPES.map((type) => (
-                <button
+                <Toggle
                   key={type}
-                  type="button"
-                  onClick={() => setCompanyType(type)}
-                  className={`px-4 py-2 rounded-lg border-2 font-medium transition-all ${
-                    companyType === type
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "border-border bg-background hover:border-primary/50"
-                  }`}
+                  pressed={companyType === type}
+                  onPressedChange={() => setCompanyType(type)}
+                  aria-label={`Tipo: ${type}`}
                 >
                   {type}
-                </button>
+                </Toggle>
               ))}
             </div>
           </div>
@@ -161,19 +158,14 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
             <Label>Sectores</Label>
             <div className="flex flex-wrap gap-2">
               {SECTORS.map((sector) => (
-                <button
+                <Toggle
                   key={sector}
-                  type="button"
-                  onClick={() => handleSectorToggle(sector)}
-                  className="transition-all"
+                  pressed={sectors.includes(sector)}
+                  onPressedChange={() => handleSectorToggle(sector)}
+                  aria-label={`Sector: ${sector}`}
                 >
-                  <Badge
-                    variant={sectors.includes(sector) ? "default" : "outline"}
-                    className="cursor-pointer"
-                  >
-                    {sector}
-                  </Badge>
-                </button>
+                  {sector}
+                </Toggle>
               ))}
             </div>
           </div>
@@ -230,24 +222,20 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
                       <Label className="text-sm">Severidad mínima</Label>
                       <div className="flex flex-wrap gap-2">
                         {["", "low", "medium", "high"].map((sev) => (
-                          <button
+                          <Toggle
                             key={sev}
-                            type="button"
-                            onClick={() =>
+                            pressed={channel.min_severity === (sev || undefined)}
+                            onPressedChange={() =>
                               handleChannelChange(
                                 index,
                                 "min_severity",
                                 sev || undefined,
                               )
                             }
-                            className={`px-3 py-1 rounded border text-sm transition-all ${
-                              channel.min_severity === (sev || undefined)
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "border-border bg-background hover:border-primary/50"
-                            }`}
+                            aria-label={sev === "" ? "Todo" : sev === "low" ? "Baja+" : sev === "medium" ? "Media+" : "Solo Alta"}
                           >
                             {sev === "" ? "Todo" : sev === "low" ? "Baja+" : sev === "medium" ? "Media+" : "Solo Alta"}
-                          </button>
+                          </Toggle>
                         ))}
                       </div>
                     </div>
