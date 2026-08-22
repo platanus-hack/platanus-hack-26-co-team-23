@@ -1,21 +1,21 @@
-# complia-mcp
+# complai-mcp
 
 Normativa colombiana estructurada para agentes de IA — resoluciones DIAN, circulares de la
 Superfinanciera, normativa SIC y el inventario SUIN-Juriscol, analizadas y clasificadas por
-[CumplIA](https://complia-weld.vercel.app).
+[complAI](https://complai-co.vercel.app).
 
 ## Uso
 
 **Claude Code:**
 
 ```bash
-claude mcp add complia -- npx -y complia-mcp
+claude mcp add complai -- npx -y complai-mcp
 ```
 
 **Claude Desktop** (`claude_desktop_config.json`):
 
 ```json
-{ "mcpServers": { "complia": { "command": "npx", "args": ["-y", "complia-mcp"] } } }
+{ "mcpServers": { "complai": { "command": "npx", "args": ["-y", "complai-mcp"] } } }
 ```
 
 ## Tools
@@ -30,7 +30,7 @@ deadline), severidad y link a la fuente oficial.
 
 ## Config
 
-- `COMPLIA_API_URL` — override del backend (default: producción de CumplIA).
+- `COMPLAI_API_URL` — override del backend (default: producción de complAI).
 
 ---
 

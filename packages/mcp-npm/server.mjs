@@ -1,24 +1,24 @@
 #!/usr/bin/env node
-// complia-mcp: cliente stdio delgado. NO lleva credenciales — solo consume la API
-// pública read-only de CumplIA (las normas son datos públicos).
+// complai-mcp: cliente stdio delgado. NO lleva credenciales — solo consume la API
+// pública read-only de complAI (las normas son datos públicos).
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 
-const API = process.env.COMPLIA_API_URL ?? 'https://complia-weld.vercel.app'
+const API = process.env.COMPLAI_API_URL ?? 'https://complai-co.vercel.app'
 const SECTORS = ['fintech', 'salud', 'alimentos', 'transporte', 'construccion',
   'comercio', 'tecnologia', 'datos-personales', 'laboral-general', 'tributario-general']
 
 async function fetchNorms(params) {
   const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null && v !== ''))
   const res = await fetch(`${API}/api/public/norms?${qs}`)
-  if (!res.ok) throw new Error(`CumplIA API ${res.status}`)
+  if (!res.ok) throw new Error(`complAI API ${res.status}`)
   return res.json()
 }
 
 const asText = (data) => ({ content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] })
 
-const server = new McpServer({ name: 'complia', version: '0.1.0' })
+const server = new McpServer({ name: 'complai', version: '0.2.0' })
 
 server.tool(
   'buscar_normas',
