@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Company, CHANNEL_TYPES, COMPANY_TYPES, SECTORS } from "@/lib/types";
+import { Company, CHANNEL_TYPES, COMPANY_TYPES, SECTORS, ChannelType } from "@/lib/types";
 import { updateCompanySettings } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Toggle } from "@/components/ui/toggle";
 import { GithubConnect } from "./github-connect";
+import { CHANNEL_FIELD, CHANNEL_LABELS } from "@/lib/channel-config";
 
 type ChannelState = {
   type: string;
@@ -53,6 +54,10 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
   });
   const [reviewerGithub, setReviewerGithub] = useState(company?.reviewer_github || "");
   const [loading, setLoading] = useState(false);
+  // The server action revalidates /settings, but that round-trip leaves the GitHub block
+  // missing until the page repaints. Keeping the saved company in state makes it appear
+  // as soon as the save returns.
+  const [savedCompany, setSavedCompany] = useState(company);
 
   const handleSectorToggle = (sector: string) => {
     setSectors((prev) =>
@@ -99,7 +104,8 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
 
       if (result?.success) {
         toast.success("Configuración guardada exitosamente");
-        if (!company) router.refresh();
+        if (result.data) setSavedCompany(result.data as Company);
+        router.refresh();
       } else if (result?.error) {
         toast.error(result.error);
       }
@@ -192,7 +198,7 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
           {channels.map((channel, index) => (
             <div key={channel.type} className="space-y-4 pb-6 last:pb-0 last:border-0 border-b">
               <div className="flex items-center justify-between">
-                <Label className="font-semibold">{CHANNEL_LABELS[channel.type] ?? channel.type}</Label>
+                <Label className="font-semibold">{CHANNEL_LABELS[channel.type as ChannelType] ?? channel.type}</Label>
                 <Switch
                   checked={channel.enabled}
                   onCheckedChange={(checked) =>
@@ -211,12 +217,12 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
                     <Input
                       id={`config-${channel.type}`}
                       value={
-                        channel.config[getConfigField(channel.type)] || ""
+                        channel.config[CHANNEL_FIELD[channel.type as ChannelType]] || ""
                       }
                       onChange={(e) =>
                         handleChannelChange(
                           index,
-                          getConfigField(channel.type),
+                          CHANNEL_FIELD[channel.type as ChannelType],
                           e.target.value,
                         )
                       }
@@ -258,8 +264,8 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
 
       {/* PRO tier: repo connection + reviewer, in a single card.
           The connection saves itself; the reviewer goes with the form's submit. */}
-      {company && (
-        <GithubConnect companyId={company.id}>
+      {savedCompany && (
+        <GithubConnect companyId={savedCompany.id}>
           <div className="space-y-2 border-t pt-4">
             <Label htmlFor="reviewer-github">Revisor de los PRs</Label>
             <Input
@@ -339,9 +345,9 @@ function ReadOnlyView({ company }: { company: Company | null }) {
           ) : (
             company.channels.map((channel) => (
               <div key={channel.type} className="pb-4 border-b last:border-0 last:pb-0">
-                <p className="font-medium mb-1">{CHANNEL_LABELS[channel.type] ?? channel.type}</p>
+                <p className="font-medium mb-1">{CHANNEL_LABELS[channel.type as ChannelType] ?? channel.type}</p>
                 <p className="text-sm text-muted-foreground">
-                  {channel.config[getConfigField(channel.type)] || "Configuración no disponible"}
+                  {channel.config[CHANNEL_FIELD[channel.type as ChannelType]] || "Configuración no disponible"}
                 </p>
                 {channel.min_severity && (
                   <Badge variant="outline" className="mt-2 text-xs">
@@ -388,29 +394,6 @@ const SECTOR_LABELS: Record<string, string> = {
   "tributario-general": "Tributario",
 };
 
-const CHANNEL_LABELS: Record<string, string> = {
-  slack: "Slack",
-  google_chat: "Google Chat",
-  discord: "Discord",
-  teams: "Microsoft Teams",
-  email: "Email",
-  whatsapp: "WhatsApp",
-  voice: "Llamada de voz",
-};
-
-function getConfigField(channelType: string): string {
-  const map: Record<string, string> = {
-    slack: "webhook_url",
-    google_chat: "webhook_url",
-    discord: "webhook_url",
-    teams: "webhook_url",
-    email: "address",
-    whatsapp: "phone",
-    voice: "phone",
-  };
-  return map[channelType] || "webhook_url";
-}
-
 function getConfigLabel(channelType: string): string {
   const map: Record<string, string> = {
     slack: "Webhook URL",
@@ -431,13 +414,12 @@ function getConfigPlaceholder(channelType: string): string {
     discord: "https://discord.com/api/webhooks/...",
     teams: "https://outlook.webhook.office.com/...",
     email: "alerts@example.com",
-    whatsapp: "+57 300 123 4567",
-    voice: "+57 300 123 4567",
+    whatsapp: "+573001234567",
+    voice: "+573001234567",
   };
   return map[channelType] || "Configuración";
 }
 
 function getDefaultConfig(channelType: string): Record<string, string> {
-  const field = getConfigField(channelType);
-  return { [field]: "" };
+  return { [CHANNEL_FIELD[channelType as ChannelType]]: "" };
 }
