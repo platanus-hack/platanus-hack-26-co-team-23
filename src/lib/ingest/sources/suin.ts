@@ -35,7 +35,7 @@ export function mapSuinRecord(raw: Record<string, unknown>): SourceNorm {
 
 export const suin: SourceAdapter = {
   id: 'suin',
-  async fetch(limit = 25) {
+  async fetch(limit = 25, offset = 0) {
     // Only recent, currently-in-force years; a_o is text with historical junk in it — never sort by global a_o
     const where = encodeURIComponent(`a_o in ('2025','2026') AND vigencia='Vigente'`)
     // Sort by year DESC so the current year comes first: there are >1,000 norms in force
@@ -45,7 +45,7 @@ export const suin: SourceAdapter = {
     // bring in junk like "996".
     const order = encodeURIComponent('a_o DESC')
     const res = await fetch(
-      `https://www.datos.gov.co/resource/fiev-nid6.json?$limit=${limit}&$where=${where}&$order=${order}`,
+      `https://www.datos.gov.co/resource/fiev-nid6.json?$limit=${limit}&$offset=${offset}&$where=${where}&$order=${order}`,
       { headers: { Accept: 'application/json' } },
     )
     if (!res.ok) throw new Error(`SODA ${res.status}`)
