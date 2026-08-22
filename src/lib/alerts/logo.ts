@@ -1,6 +1,6 @@
-/* Logo de complAI en PNG (320px, escala de grises), embebido en base64.
- * Va en el código y no en public/ porque las funciones serverless no tienen
- * garantizado el acceso por fs a los assets estáticos. */
+/* complAI logo as PNG (320px, grayscale), embedded as base64.
+ * It lives in code rather than public/ because serverless functions have no
+ * guaranteed fs access to static assets. */
 export const LOGO_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAUAAAADwCAAAAABURuK3AAANBGlDQ1BrQ0dDb2xvclNwYWNlR2VuZXJpY0dyYXlHYW1tYTJfMgAA' +
   'WIWlVwdck9cWv9/IAJKwp4ywkWVAgQAyIjOA7CG4iEkggRBiBgLiQooVrFscOCoqilpcFYE6UYtW6satD2qpoNRiLS6svpsEEKvt' +

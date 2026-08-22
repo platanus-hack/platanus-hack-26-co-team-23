@@ -1,3 +1,3 @@
--- Contenido del aviso (qué cambió, por qué te afecta, qué pasa si no haces nada, pasos).
--- Se genera una vez por alerta para que todos los canales y la guía en PDF digan lo mismo.
+-- Notice content (what changed, why it affects you, what happens if you do nothing, steps).
+-- Generated once per alert so every channel and the PDF guide say the same thing.
 alter table alerts add column if not exists brief jsonb;

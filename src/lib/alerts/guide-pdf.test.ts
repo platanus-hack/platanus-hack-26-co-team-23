@@ -14,30 +14,30 @@ const meta = { normTitle: 'Resolución DIAN', companyName: 'Demo SAS', source: '
 
 const pdfBytes = async (b: Brief) => buildGuidePdf(b, meta)
 
-describe('guía en PDF', () => {
-  it('produce un PDF válido con acentos y ñ', async () => {
+describe('PDF guide', () => {
+  it('produces a valid PDF with accents and ñ', async () => {
     const pdf = await pdfBytes(brief)
     expect(Buffer.from(pdf.slice(0, 5)).toString()).toBe('%PDF-')
     expect(pdf.length).toBeGreaterThan(1000)
   })
 
-  it('no revienta con caracteres fuera de WinAnsi (emoji, viñetas, CJK)', async () => {
-    // Las fuentes estándar de PDF codifican en WinAnsi: sin sanear, pdf-lib lanza aquí.
-    const sucio: Brief = {
+  it('does not blow up on characters outside WinAnsi (emoji, bullets, CJK)', async () => {
+    // Standard PDF fonts encode in WinAnsi: without sanitizing, pdf-lib throws right here.
+    const dirty: Brief = {
       ...brief,
       que_cambio: '🚨 Cambio urgente ⚠️ 中文 — con viñeta • y comillas “así”',
       pasos: [{ titulo: '✅ Hacerlo', detalle: 'Ya 🎯', responsable: 'TI' }],
     }
-    await expect(pdfBytes(sucio)).resolves.toBeInstanceOf(Uint8Array)
+    await expect(pdfBytes(dirty)).resolves.toBeInstanceOf(Uint8Array)
   })
 
-  it('funciona sin plazo y sin fuente', async () => {
+  it('works with no deadline and no source', async () => {
     const pdf = await buildGuidePdf({ ...brief, plazo: null }, { ...meta, source: null })
     expect(Buffer.from(pdf.slice(0, 5)).toString()).toBe('%PDF-')
   })
 
-  it('pagina cuando el contenido no cabe en una hoja', async () => {
-    const largo: Brief = {
+  it('paginates when the content does not fit on one sheet', async () => {
+    const long: Brief = {
       ...brief,
       pasos: Array.from({ length: 40 }, (_, i) => ({
         titulo: `Paso ${i + 1} con un título razonablemente largo para ocupar espacio`,
@@ -45,7 +45,7 @@ describe('guía en PDF', () => {
         responsable: 'contador',
       })),
     }
-    const pdf = await pdfBytes(largo)
+    const pdf = await pdfBytes(long)
     expect((await PDFDocument.load(pdf)).getPageCount()).toBeGreaterThan(1)
   })
 })

@@ -11,8 +11,8 @@ export type AlertBrief = {
 }
 
 /**
- * Brief de una alerta. Se genera con el modelo la primera vez y se guarda en
- * `alerts.brief`; las siguientes llamadas (otro canal, la descarga del PDF) lo releen.
+ * Brief for an alert. Generated with the model the first time and stored in
+ * `alerts.brief`; later calls (another channel, the PDF download) read it back.
  */
 export async function getOrCreateBrief(alertId: string): Promise<AlertBrief | null> {
   const db = supabaseAdmin()
@@ -26,13 +26,11 @@ export async function getOrCreateBrief(alertId: string): Promise<AlertBrief | nu
   const norm = alert.norms as unknown as Norm
   const company = alert.companies as unknown as Pick<Company, 'name' | 'company_type' | 'sectors'>
 
-  const guardado = BriefSchema.safeParse(alert.brief)
-  const brief = guardado.success
-    ? guardado.data
-    : await generateBrief(norm, company, alert.impact)
+  const cached = BriefSchema.safeParse(alert.brief)
+  const brief = cached.success ? cached.data : await generateBrief(norm, company, alert.impact)
 
-  // Solo escribimos cuando lo acabamos de generar.
-  if (!guardado.success) await db.from('alerts').update({ brief }).eq('id', alertId)
+  // Only write when we just generated it.
+  if (!cached.success) await db.from('alerts').update({ brief }).eq('id', alertId)
 
   return {
     brief,

@@ -3,10 +3,13 @@ import { anthropic, MODEL } from '@/lib/llm'
 import type { Company, Norm } from '@/lib/types'
 
 /**
- * El contenido que la empresa recibe cuando una norma le aplica: qué cambió,
- * por qué le afecta a ELLA, qué se arriesga si no hace nada, y los pasos.
- * Se genera una vez y se guarda en `alerts.brief` para que todos los canales
- * (email, Slack, WhatsApp, la guía en PDF) digan exactamente lo mismo.
+ * What the company gets when a norm applies to it: what changed, why it affects
+ * THEM, what they risk by doing nothing, and the steps. Generated once and stored
+ * in `alerts.brief` so every channel (email, Slack, WhatsApp, the PDF guide) says
+ * exactly the same thing.
+ *
+ * Field names stay in Spanish because they are the JSON the model fills in and the
+ * copy is delivered to Colombian users verbatim.
  */
 export const BriefSchema = z.object({
   que_cambio: z.string().min(1),
@@ -25,6 +28,7 @@ export const BriefSchema = z.object({
 })
 export type Brief = z.infer<typeof BriefSchema>
 
+// Prompt stays in Spanish: it produces the copy the Colombian user reads.
 const SYSTEM = `Escribes el aviso que recibe una PYME colombiana cuando una norma le aplica.
 Le hablas al dueño o al contador, no a un abogado: frases cortas, sin latinajos, sin citar
 artículos salvo que el número sea lo que hay que buscar.
@@ -95,6 +99,6 @@ export async function generateBrief(
     ],
   })
   const block = msg.content.find((b) => b.type === 'tool_use')
-  if (!block || block.type !== 'tool_use') throw new Error('sin tool_use en la respuesta')
+  if (!block || block.type !== 'tool_use') throw new Error('no tool_use in response')
   return BriefSchema.parse(block.input)
 }
