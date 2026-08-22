@@ -143,6 +143,7 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
               {COMPANY_TYPES.map((type) => (
                 <Toggle
                   key={type}
+                  variant="outline"
                   pressed={companyType === type}
                   onPressedChange={() => setCompanyType(type)}
                   aria-label={`Tipo: ${type}`}
@@ -160,11 +161,12 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
               {SECTORS.map((sector) => (
                 <Toggle
                   key={sector}
+                  variant="outline"
                   pressed={sectors.includes(sector)}
                   onPressedChange={() => handleSectorToggle(sector)}
-                  aria-label={`Sector: ${sector}`}
+                  aria-label={`Sector: ${SECTOR_LABELS[sector]}`}
                 >
-                  {sector}
+                  {SECTOR_LABELS[sector]}
                 </Toggle>
               ))}
             </div>
@@ -184,7 +186,7 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
           {channels.map((channel, index) => (
             <div key={channel.type} className="space-y-4 pb-6 last:pb-0 last:border-0 border-b">
               <div className="flex items-center justify-between">
-                <Label className="capitalize font-semibold">{channel.type}</Label>
+                <Label className="font-semibold">{CHANNEL_LABELS[channel.type] ?? channel.type}</Label>
                 <Switch
                   checked={channel.enabled}
                   onCheckedChange={(checked) =>
@@ -224,6 +226,7 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
                         {["", "low", "medium", "high"].map((sev) => (
                           <Toggle
                             key={sev}
+                            variant="outline"
                             pressed={channel.min_severity === (sev || undefined)}
                             onPressedChange={() =>
                               handleChannelChange(
@@ -321,7 +324,7 @@ function ReadOnlyView({ company }: { company: Company | null }) {
             <p className="text-sm text-muted-foreground mb-2">Sectores</p>
             <div className="flex flex-wrap gap-2">
               {company.sectors.map((sector) => (
-                <Badge key={sector}>{sector}</Badge>
+                <Badge key={sector}>{SECTOR_LABELS[sector] ?? sector}</Badge>
               ))}
             </div>
           </div>
@@ -339,7 +342,7 @@ function ReadOnlyView({ company }: { company: Company | null }) {
           ) : (
             company.channels.map((channel) => (
               <div key={channel.type} className="pb-4 border-b last:border-0 last:pb-0">
-                <p className="font-medium capitalize mb-1">{channel.type}</p>
+                <p className="font-medium mb-1">{CHANNEL_LABELS[channel.type] ?? channel.type}</p>
                 <p className="text-sm text-muted-foreground">
                   {channel.config[getConfigField(channel.type)] || "Configuración no disponible"}
                 </p>
@@ -375,6 +378,29 @@ function ReadOnlyView({ company }: { company: Company | null }) {
 }
 
 // Helper functions
+const SECTOR_LABELS: Record<string, string> = {
+  fintech: "Fintech",
+  salud: "Salud",
+  alimentos: "Alimentos",
+  transporte: "Transporte",
+  construccion: "Construcción",
+  comercio: "Comercio",
+  tecnologia: "Tecnología",
+  "datos-personales": "Datos personales",
+  "laboral-general": "Laboral",
+  "tributario-general": "Tributario",
+};
+
+const CHANNEL_LABELS: Record<string, string> = {
+  slack: "Slack",
+  google_chat: "Google Chat",
+  discord: "Discord",
+  teams: "Microsoft Teams",
+  email: "Email",
+  whatsapp: "WhatsApp",
+  voice: "Llamada de voz",
+};
+
 function getConfigField(channelType: string): string {
   const map: Record<string, string> = {
     slack: "webhook_url",

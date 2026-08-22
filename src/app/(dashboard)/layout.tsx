@@ -101,8 +101,8 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-6">
-        {children}
+      <main className="flex-1 p-4 md:p-8">
+        <div className="mx-auto w-full max-w-3xl">{children}</div>
       </main>
     </div>
   );
