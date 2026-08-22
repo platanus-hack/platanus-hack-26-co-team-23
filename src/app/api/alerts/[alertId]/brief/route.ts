@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getOrCreateBrief } from '@/lib/alerts/get-brief'
+import { callerOwnsAlert } from '@/lib/api-auth'
 
 export const maxDuration = 60
 
@@ -7,6 +8,9 @@ export const maxDuration = 60
  *  nothing, and the steps. This is what the dispatcher uses to build each channel's message. */
 export async function GET(_req: Request, { params }: { params: Promise<{ alertId: string }> }) {
   const { alertId } = await params
+  // Dashboard-only: the alert's content belongs to one company.
+  if (!(await callerOwnsAlert(alertId)))
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   try {
     const data = await getOrCreateBrief(alertId)
     if (!data) return NextResponse.json({ error: 'alert not found' }, { status: 404 })

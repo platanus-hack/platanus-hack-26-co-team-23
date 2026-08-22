@@ -2,17 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { octokitFor } from '@/lib/pro/octokit'
 import { buildInstallUrl } from '@/lib/pro/install-state'
+import { callerCompany } from '@/lib/api-auth'
 
-// lazy: both handlers receive companyId from the client. Once auth exists (Task 3),
-// pull it from the session instead of the request — today the dashboard is the only door.
+// The company comes from the Clerk session, never from the request.
 
 /**
  * GET ?companyId=… → repos the company exposed when installing the GitHub App.
  * If it hasn't installed it yet, returns the URL to send it to.
  */
 export async function GET(req: NextRequest) {
-  const companyId = req.nextUrl.searchParams.get('companyId')
-  if (!companyId) return NextResponse.json({ error: 'missing companyId' }, { status: 400 })
+  const caller = await callerCompany()
+  if (!caller) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const companyId = caller.id
 
   const db = supabaseAdmin()
   const { data: company } = await db
@@ -44,8 +45,11 @@ export async function GET(req: NextRequest) {
 
 /** POST { companyId, repo } → sets the repo PRs will be opened against. */
 export async function POST(req: NextRequest) {
-  const { companyId, repo } = await req.json()
-  if (!companyId || !repo) return NextResponse.json({ error: 'missing companyId or repo' }, { status: 400 })
+  const caller = await callerCompany()
+  if (!caller) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const companyId = caller.id
+  const { repo } = await req.json()
+  if (!repo) return NextResponse.json({ error: 'missing repo' }, { status: 400 })
 
   const db = supabaseAdmin()
   const { data: company } = await db
