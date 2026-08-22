@@ -1,11 +1,28 @@
 import type { ChannelAdapter } from '../types'
 
-// Retell places the outbound call; dynamic variables are injected into the agent's prompt:
-// https://docs.retellai.com/api-references/create-phone-call
+// Outbound call via Twilio with inline TwiML <Say> (text-to-speech in Spanish).
+// One-way voice alert — no conversational agent needed for an alert. Free on the Twilio
+// trial (verified destination numbers only; Twilio prepends a trial notice).
+function escapeXml(s: string): string {
+  return s.replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]!))
+}
+
 export const voice: ChannelAdapter = {
   async send(config, payload) {
-    const res = await fetch('https://api.retellai.com/v2/create-phone-call', {
+    const sid = process.env.TWILIO_ACCOUNT_SID!
+    const token = process.env.TWILIO_AUTH_TOKEN!
+    const speech = [
+      'Hola, te llamo de complAI, tu asistente de cumplimiento normativo.',
+      `Se publicó una norma que te afecta: ${payload.norm_title}.`,
+      `Cómo te afecta: ${payload.impact}`,
+      `Nuestra recomendación: ${payload.recommendation}.`,
+      'Te enviamos el detalle por escrito. Hasta pronto.',
+    ].join(' ')
+    const twiml = `<Response><Say voice="Polly.Mia" language="es-MX">${escapeXml(speech)}</Say></Response>`
+
+    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Calls.json`, {
       method: 'POST',
+<<<<<<< Updated upstream
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.RETELL_API_KEY}` },
       body: JSON.stringify({
         from_number: process.env.RETELL_FROM_NUMBER,
@@ -21,7 +38,14 @@ export const voice: ChannelAdapter = {
           plazo: payload.brief?.plazo ?? '',
         },
       }),
+=======
+      headers: {
+        Authorization: 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ To: config.phone, From: process.env.TWILIO_FROM_NUMBER!, Twiml: twiml }),
+>>>>>>> Stashed changes
     })
-    if (!res.ok) throw new Error(`retell ${res.status}: ${await res.text()}`)
+    if (!res.ok) throw new Error(`twilio ${res.status}: ${await res.text()}`)
   },
 }
