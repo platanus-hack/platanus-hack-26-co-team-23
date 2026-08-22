@@ -3,14 +3,15 @@
 Estado de la rama `feat/task-7-pro-repo-analyzer` (Task 7 del plan, track M4).
 
 **Verificado end-to-end el 2026-08-22:**
-[PR #2 en `ComplAI-Crew/facturador-demo`](https://github.com/ComplAI-Crew/facturador-demo/pull/2)
-— abierto por `complia-app[bot]`, revisor solicitado, ~34s desde el POST, sin merge.
+[PR #3 en `ComplAI-Crew/facturador-demo`](https://github.com/ComplAI-Crew/facturador-demo/pull/3)
+— **draft**, abierto por `complia-app[bot]`, revisor solicitado, ~36s desde el POST, sin merge.
 
 ## Qué hace
 
 Cuando una norma afecta a una empresa que conectó su repo, CumplIA lee el código,
-propone el cambio que la norma exige y abre un PR asignado a un revisor humano.
-**Nunca mergea**: el PR queda abierto esperando aprobación.
+propone el cambio que la norma exige y abre un PR **en draft** asignado a un revisor humano.
+**Nunca mergea**: un draft ni siquiera admite merge hasta que una persona lo marque
+"ready for review". En repos privados de plan Free, que no admiten draft, cae a PR normal.
 
 ```
 alerta (norma × empresa)
@@ -19,7 +20,7 @@ alerta (norma × empresa)
         ├─ lee COMPLIA.md del repo         → qué archivos mirar
         ├─ ¿la norma regula lo que hace este código?
         │     no → { skipped: true, reason } y NO se abre PR
-        └─ sí → cambios + rama + commits + PR + reviewer
+        └─ sí → cambios + rama + commits + PR draft + reviewer
                 devuelve prUrl, lo guarda en alerts.pr_url
 ```
 

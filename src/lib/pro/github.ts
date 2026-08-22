@@ -186,15 +186,20 @@ export async function openCompliancePR(args: {
       sha: 'sha' in current ? current.sha : undefined,
     })
   }
-  // El agente nunca mergea: el PR queda abierto esperando revisión humana.
-  const { data: pr } = await gh.rest.pulls.create({
+  // Draft: el agente nunca mergea y el PR ni siquiera nace mergeable — hay que
+  // marcarlo "ready for review" a mano después de revisarlo.
+  const nuevoPr = {
     owner,
     repo,
     base,
     head: branch,
     title: `[CumplIA] Cumplimiento: ${args.normTitle.slice(0, 80)}`,
     body: `${pr_body}\n\n---\n🤖 PR generado por CumplIA. **Requiere revisión humana — nunca mergear sin aprobar.**`,
-  })
+  }
+  const { data: pr } = await gh.rest.pulls
+    .create({ ...nuevoPr, draft: true })
+    // Los repos privados en plan Free no admiten draft: mejor un PR normal que ninguno.
+    .catch(() => gh.rest.pulls.create(nuevoPr))
   if (args.reviewer)
     await gh.rest.pulls
       .requestReviewers({ owner, repo, pull_number: pr.number, reviewers: [args.reviewer] })
