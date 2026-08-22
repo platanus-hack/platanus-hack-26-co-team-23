@@ -1,34 +1,35 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes } from 'node:crypto'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 
-export interface ApiKeyGenerated {
-  raw: string;
-  prefix: string;
-  hash: string;
+export const hashApiKey = (raw: string) => createHash('sha256').update(raw).digest('hex')
+
+export function generateApiKey() {
+  const raw = `cai_${randomBytes(24).toString('hex')}`
+  return { raw, prefix: raw.slice(0, 10), hash: hashApiKey(raw) }
 }
 
-/**
- * Genera una nueva API key con formato "cai_" + 24 bytes aleatorios en hex.
- * Devuelve la key cruda, el prefijo visible (primeros 10 chars) y el hash SHA-256.
- * La key cruda nunca se persiste — solo el hash se guarda en BD.
- */
-export function generateApiKey(): ApiKeyGenerated {
-  const raw = "cai_" + randomBytes(24).toString("hex");
-  const prefix = raw.slice(0, 10);
-  const hash = hashApiKey(raw);
-  return { raw, prefix, hash };
+function extractKey(req: Request): string | null {
+  const header = req.headers.get('x-api-key') ?? req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
+  return header?.startsWith('cai_') ? header : null
 }
 
-/**
- * Genera el hash SHA-256 hex de una API key.
- * Usa esta función para validar keys contra `key_hash` en BD.
- */
-export function hashApiKey(raw: string): string {
-  return createHash("sha256").update(raw).digest("hex");
+// true si la request trae una key válida (o la MASTER_API_KEY de bootstrap/demo).
+export async function validateApiKey(req: Request): Promise<boolean> {
+  const key = extractKey(req)
+  if (!key) return false
+  if (process.env.MASTER_API_KEY && key === process.env.MASTER_API_KEY) return true
+
+  const db = supabaseAdmin()
+  const { data } = await db.from('api_keys')
+    .select('id').eq('key_hash', hashApiKey(key)).is('revoked_at', null).maybeSingle()
+  if (!data) return false
+  // telemetría best-effort — no bloquea la request
+  void db.from('api_keys').update({ last_used_at: new Date().toISOString() }).eq('id', data.id).then(() => {})
+  return true
 }
 
-/**
- * Valida una API key contra su hash.
- */
-export function validateApiKey(raw: string, hash: string): boolean {
-  return hashApiKey(raw) === hash;
-}
+export const unauthorized = () =>
+  new Response(
+    JSON.stringify({ error: 'API key requerida. Genera la tuya en https://complai-co.vercel.app/keys (header x-api-key o Authorization: Bearer cai_...)' }),
+    { status: 401, headers: { 'Content-Type': 'application/json' } },
+  )

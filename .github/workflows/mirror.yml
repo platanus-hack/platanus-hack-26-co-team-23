@@ -1,11 +1,14 @@
-# Espeja este repo al de Platanus (juzgamiento) en cada push a cualquier rama.
-# Reemplaza el dual-push local: los merges de PRs por la UI también quedan espejados.
-# Push fast-forward only (sin --force): si el espejo diverge (alguien pusheó directo
+# Espeja SOLO main y dev al repo de Platanus (juzgamiento) en cada push.
+# No espejamos ramas feature: son transitorias, viven en ComplAI-Crew (donde ocurren
+# los PRs) y sus rebases/force-push harían fallar el fast-forward del espejo.
+# Push fast-forward only (sin --force): si main/dev divergen (alguien pusheó directo
 # a Platanus), este job FALLA a propósito — reconciliar con pull/merge, nunca pisar.
 # Requiere el secret MIRROR_TOKEN: PAT classic (scope repo) de una cuenta con
 # escritura en platanus-hack/platanus-hack-26-co-team-23.
 name: mirror-to-platanus
-on: push
+on:
+  push:
+    branches: [main, dev]
 concurrency:
   group: mirror
   cancel-in-progress: false
@@ -19,7 +22,9 @@ jobs:
           # sin esto, el GITHUB_TOKEN del bot queda como extraheader global de github.com
           # y pisa el MIRROR_TOKEN embebido en la URL del push
           persist-credentials: false
-      - name: Push all branches to platanus mirror (fast-forward only)
+      - name: Push main and dev to platanus mirror (fast-forward only)
         run: |
-          git push --all \
-            "https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/platanus-hack/platanus-hack-26-co-team-23.git"
+          MIRROR="https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/platanus-hack/platanus-hack-26-co-team-23.git"
+          git fetch origin main dev
+          git push "$MIRROR" origin/main:refs/heads/main
+          git push "$MIRROR" origin/dev:refs/heads/dev
