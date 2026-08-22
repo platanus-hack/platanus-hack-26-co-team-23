@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'empresa sin repo configurado' }, { status: 400 })
 
   try {
-    const prUrl = await openCompliancePR({
+    const res = await openCompliancePR({
       repo: alert.companies.github_repo,
       installationId: alert.companies.github_installation_id,
       reviewer: alert.companies.reviewer_github,
@@ -25,8 +25,11 @@ export async function POST(req: NextRequest) {
       obligations: alert.norms.obligations,
       impact: alert.impact,
     })
-    await db.from('alerts').update({ pr_url: prUrl }).eq('id', alertId)
-    return NextResponse.json({ prUrl })
+    // La norma no toca este código: no es un error, simplemente no hay PR que abrir.
+    if ('skipped' in res) return NextResponse.json(res)
+
+    await db.from('alerts').update({ pr_url: res.prUrl }).eq('id', alertId)
+    return NextResponse.json({ prUrl: res.prUrl })
   } catch (e) {
     console.error('openCompliancePR falló:', e)
     return NextResponse.json({ error: (e as Error).message }, { status: 502 })

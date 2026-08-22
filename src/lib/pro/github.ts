@@ -5,23 +5,51 @@ import { COMPLIA_FILENAMES, parseCompliaPaths } from './complia-md'
 import { octokitFor, type Gh } from './octokit'
 
 const ProposalSchema = z.object({
-  changes: z.array(z.object({ path: z.string().min(1), content: z.string() })),
-  pr_body: z.string().min(1),
+  aplica: z.boolean(),
+  motivo: z.string().min(1),
+  changes: z.array(z.object({ path: z.string().min(1), content: z.string() })).default([]),
+  pr_body: z.string().default(''),
 })
 type Proposal = z.infer<typeof ProposalSchema>
 
-const SYSTEM = `Eres un ingeniero que adapta código para cumplir una norma colombiana.
-Registra tu propuesta con la herramienta. Cambia SOLO lo necesario para la obligación:
-cada archivo en changes debe ir con su CONTENIDO COMPLETO ya modificado, no un diff.
-Si ningún archivo del repo es relevante para la norma, changes=[].`
+const SYSTEM = `Eres un ingeniero que evalúa si una norma colombiana obliga a cambiar ESTE código.
+
+Primero decide 'aplica', y decídelo SOLO por la materia: ¿la norma regula la actividad que
+este código ejecuta, y esa actividad vive en alguno de los archivos que ves?
+
+aplica=false cuando la norma va de otro sector, otro tipo de entidad u otra actividad; o
+cuando obliga a trámites, reportes o avisos que no viven en el código. Que exista un archivo
+con nombre parecido no basta, y que la norma mencione tu sector tampoco si regula a un actor
+distinto del que este software representa.
+
+aplica=true cuando la actividad regulada es la que hace este código. No exijas que la norma
+traiga el detalle técnico: las normas suelen ser vagas y para eso existe el revisor humano.
+Si el ámbito coincide pero falta detalle, implementa el cambio estructural más razonable y
+declara en pr_body, bajo "Qué debe confirmar el revisor", cada supuesto que hiciste y qué
+parte del texto oficial hay que contrastar. Lo que no puedes hacer es inventar cifras,
+plazos o códigos presentándolos como si vinieran de la norma.
+
+Con aplica=false: motivo en una frase, changes=[] y pr_body="".
+Con aplica=true: cambia SOLO lo necesario, cada archivo en changes con su CONTENIDO COMPLETO
+ya modificado (no un diff), y pr_body en markdown.`
 
 // Tool use forzado: mismo patrón que src/lib/ingest/analyze.ts — cero parsing frágil.
+// El orden importa: el modelo genera 'aplica' y 'motivo' ANTES de ponerse a proponer
+// cambios, así la decisión no queda contaminada por el trabajo ya hecho.
 const PROPOSAL_TOOL = {
   name: 'registrar_propuesta',
-  description: 'Registra los cambios de código propuestos para cumplir una norma',
+  description: 'Registra si la norma obliga a cambiar este código y, si aplica, los cambios',
   input_schema: {
     type: 'object' as const,
     properties: {
+      aplica: {
+        type: 'boolean',
+        description: '¿La norma obliga a modificar ESTE código? false si no tiene que ver',
+      },
+      motivo: {
+        type: 'string',
+        description: 'Una frase: por qué aplica o por qué no. Se le muestra al usuario',
+      },
       changes: {
         type: 'array',
         items: {
@@ -36,10 +64,10 @@ const PROPOSAL_TOOL = {
       pr_body: {
         type: 'string',
         description:
-          'Markdown: qué norma, qué obliga, qué cambiaste y por qué, qué debe verificar el revisor',
+          'Markdown: qué norma, qué obliga, qué cambiaste y por qué, qué debe verificar el revisor. "" si no aplica',
       },
     },
-    required: ['changes', 'pr_body'],
+    required: ['aplica', 'motivo', 'changes', 'pr_body'],
   },
 }
 
@@ -96,6 +124,9 @@ async function proposeChanges(
   return ProposalSchema.parse(block.input)
 }
 
+/** PR abierto, o la norma no obliga a tocar este código y no se abrió nada. */
+export type PrResult = { prUrl: string } | { skipped: true; reason: string }
+
 export async function openCompliancePR(args: {
   repo: string
   installationId: number | null
@@ -103,7 +134,7 @@ export async function openCompliancePR(args: {
   normTitle: string
   obligations: Obligation[]
   impact: string
-}): Promise<string> {
+}): Promise<PrResult> {
   const [owner, repo] = args.repo.split('/')
   if (!owner || !repo) throw new Error(`repo inválido: "${args.repo}" (se espera owner/nombre)`)
   const gh = await octokitFor(args.installationId)
@@ -121,15 +152,16 @@ export async function openCompliancePR(args: {
     }),
   )
 
-  // 2. Proponer cambios con Claude
-  const { changes, pr_body } = await proposeChanges(
+  // 2. ¿La norma obliga a tocar este código? Si no, no se abre PR.
+  const { aplica, motivo, changes, pr_body } = await proposeChanges(
     files,
     args.normTitle,
     args.obligations,
     args.impact,
     manifest,
   )
-  if (!changes.length) throw new Error('el modelo no encontró archivos que corregir')
+  if (!aplica || !changes.length)
+    return { skipped: true, reason: motivo || 'la norma no obliga a cambiar este código' }
 
   // 3. Branch + commits + PR
   const { data: repoInfo } = await gh.rest.repos.get({ owner, repo })
@@ -167,5 +199,5 @@ export async function openCompliancePR(args: {
     await gh.rest.pulls
       .requestReviewers({ owner, repo, pull_number: pr.number, reviewers: [args.reviewer] })
       .catch((e) => console.error('no se pudo asignar reviewer:', e))
-  return pr.html_url
+  return { prUrl: pr.html_url }
 }
