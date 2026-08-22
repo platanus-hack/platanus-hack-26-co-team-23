@@ -74,7 +74,9 @@ Lo escribe el cliente, así que va delimitado en `<contexto_del_repo>` y etiquet
 información, no instrucciones; y las rutas se validan contra el árbol real, de modo que
 un manifiesto hostil no puede hacer leer nada fuera del repo.
 
-`POST /api/pro/complia { repo, installationId }` lo genera analizando el repo.
+`POST /api/pro/complia { companyId }` lo genera analizando el repo. El repo y la credencial
+salen de la empresa en la DB, nunca del request: aceptar un `installationId` suelto dejaba
+leer el código de cualquier instalación cuyo id se adivinara.
 
 ### Credencial por empresa
 
@@ -99,7 +101,7 @@ curl -X POST localhost:3000/api/pro/pr -H 'Content-Type: application/json' \
 
 # 3. Regenerar el manifiesto de un repo
 curl -X POST localhost:3000/api/pro/complia -H 'Content-Type: application/json' \
-  -d '{"repo":"ComplAI-Crew/facturador-demo","installationId":155641303}' | jq -r .markdown
+  -d '{"companyId":"<company_id>"}' | jq -r .markdown
 ```
 
 Env necesarias: `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_SLUG`,
@@ -161,9 +163,9 @@ Tres condiciones antes de encenderlo:
 
 ### 4. Endurecer antes de clientes reales
 
-- `GET/POST /api/pro/repos` y `POST /api/pro/complia` reciben `companyId`/`installationId`
-  del request y no hay sesión que verificar (marcado con `lazy:`). Con auth, sacarlos de
-  la sesión.
+- `GET/POST /api/pro/repos` y `POST /api/pro/complia` reciben `companyId` del request y no
+  hay sesión que verificar (marcado con `lazy:`). Con auth, sacarlo de la sesión. Ninguno
+  acepta ya `installationId` ni repos sueltos: todo se deriva de la empresa.
 - El `state` del callback ya va firmado con HMAC (`GITHUB_STATE_SECRET`), así que nadie
   puede asociar una instalación a una empresa ajena. Cuando exista auth, sumar la
   verificación de sesión como segunda barrera.
