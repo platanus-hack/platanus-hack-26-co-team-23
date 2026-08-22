@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { normsForProfile } from '@/lib/norms-queries'
-import { generateImpact } from '@/lib/deliver/impact'
 import { deliverAlert } from '@/lib/deliver/dispatch'
-import { getOrCreateBrief } from '@/lib/alerts/get-brief'
+import { generateBrief, briefToAlertFields } from '@/lib/alerts/brief'
 import { guideUrl } from '@/lib/app-url'
 import type { ChannelConfig } from '@/lib/types'
 
@@ -50,29 +49,29 @@ async function handle(req: NextRequest) {
       const normId = idByExt.get(norm.external_id)
       if (!normId || seen.has(`${company.id}:${normId}`)) continue
 
-      const { impact, recommendation } = await generateImpact(company, norm)
+      // One model call per alert: the brief carries what changed, why it affects them,
+      // what they risk by doing nothing and the steps — and impact/recommendation are
+      // derived from it instead of asking the model a second time.
+      const brief = await generateBrief(norm, company).catch((e) => {
+        console.error(`brief failed for ${company.id}:${normId}:`, e)
+        return null
+      })
+      const { impact, recommendation } = brief
+        ? briefToAlertFields(brief)
+        : { impact: norm.summary ?? norm.title, recommendation: 'Revisa la norma con tu contador.' }
+
+      // brief goes in the same insert: no extra round-trip to store it.
       const { data: alert } = await db.from('alerts')
-        .insert({ company_id: company.id, norm_id: normId, impact, recommendation })
+        .insert({ company_id: company.id, norm_id: normId, impact, recommendation, brief })
         .select('id').single()
       seen.add(`${company.id}:${normId}`)
       alertsCreated++
 
-      // The brief carries what changed, why it affects them, what they risk by doing
-      // nothing and the steps. Stored on the alert, so the channels and the PDF guide
-      // all say the same thing. A failure here must not swallow the alert: we fall back
-      // to the short format.
-      const brief = alert
-        ? await getOrCreateBrief(alert.id).catch((e) => {
-            console.error(`brief failed for alert ${alert.id}:`, e)
-            return null
-          })
-        : null
-
       const { delivered } = await deliverAlert(company.channels ?? [], {
         norm_title: norm.title, norm_url: norm.url, impact, recommendation,
         severity: (norm.severity ?? 'low') as 'low' | 'medium' | 'high',
-        brief: brief?.brief ?? null,
-        guide_url: alert && brief ? guideUrl(alert.id) : null,
+        brief,
+        guide_url: alert ? guideUrl(alert.id) : null,
       })
       delivered.forEach((t) => { channelStats[t] = (channelStats[t] ?? 0) + 1 })
     }

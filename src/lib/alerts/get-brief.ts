@@ -18,7 +18,7 @@ export async function getOrCreateBrief(alertId: string): Promise<AlertBrief | nu
   const db = supabaseAdmin()
   const { data: alert } = await db
     .from('alerts')
-    .select('id, impact, brief, norms(*), companies(name, company_type, sectors)')
+    .select('id, brief, norms(*), companies(name, company_type, sectors)')
     .eq('id', alertId)
     .single()
   if (!alert?.norms || !alert?.companies) return null
@@ -27,7 +27,7 @@ export async function getOrCreateBrief(alertId: string): Promise<AlertBrief | nu
   const company = alert.companies as unknown as Pick<Company, 'name' | 'company_type' | 'sectors'>
 
   const cached = BriefSchema.safeParse(alert.brief)
-  const brief = cached.success ? cached.data : await generateBrief(norm, company, alert.impact)
+  const brief = cached.success ? cached.data : await generateBrief(norm, company)
 
   // Only write when we just generated it.
   if (!cached.success) await db.from('alerts').update({ brief }).eq('id', alertId)

@@ -1,12 +1,26 @@
 import { z } from 'zod'
 import { anthropic, MODEL } from '@/lib/llm'
-import type { Company, Norm } from '@/lib/types'
+import type { Company } from '@/lib/types'
+
+/** Shape the brief needs from a norm — loose on purpose: the row from the DB and the
+ *  one from `normsForProfile` name the publisher differently (`source` vs `issuer`). */
+type NormLike = {
+  title: string
+  summary: string | null
+  obligations: unknown
+  severity?: string | null
+  source?: string | null
+  issuer?: string | null
+  published_at?: string | null
+}
 
 /**
  * What the company gets when a norm applies to it: what changed, why it affects
  * THEM, what they risk by doing nothing, and the steps. Generated once and stored
  * in `alerts.brief` so every channel (email, Slack, WhatsApp, the PDF guide) says
- * exactly the same thing.
+ * exactly the same thing. It is also the single model call per alert: `alerts.impact`
+ * and `alerts.recommendation` are derived from it, so the pipeline never asks the model
+ * twice for the same norm × company.
  *
  * Field names stay in Spanish because they are the JSON the model fills in and the
  * copy is delivered to Colombian users verbatim.
@@ -73,13 +87,12 @@ const BRIEF_TOOL = {
 }
 
 export async function generateBrief(
-  norm: Pick<Norm, 'title' | 'summary' | 'obligations' | 'severity' | 'source' | 'published_at'>,
+  norm: NormLike,
   company: Pick<Company, 'name' | 'company_type' | 'sectors'>,
-  impact: string,
 ): Promise<Brief> {
   const msg = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 2000,
+    max_tokens: 1500,
     system: SYSTEM,
     tools: [BRIEF_TOOL],
     tool_choice: { type: 'tool', name: 'registrar_aviso' },
@@ -89,11 +102,10 @@ export async function generateBrief(
         content: [
           `EMPRESA: ${company.name} — ${company.company_type}, sectores: ${company.sectors.join(', ') || 'sin declarar'}`,
           `NORMA: ${norm.title}`,
-          `FUENTE: ${norm.source ?? 'no indicada'} · PUBLICADA: ${norm.published_at ?? 'sin fecha'}`,
+          `FUENTE: ${norm.source ?? norm.issuer ?? 'no indicada'} · PUBLICADA: ${norm.published_at ?? 'sin fecha'}`,
           `SEVERIDAD: ${norm.severity ?? 'no clasificada'}`,
           `RESUMEN: ${norm.summary ?? 'sin resumen'}`,
           `OBLIGACIONES: ${JSON.stringify(norm.obligations ?? [])}`,
-          `IMPACTO CALCULADO: ${impact}`,
         ].join('\n'),
       },
     ],
@@ -101,4 +113,12 @@ export async function generateBrief(
   const block = msg.content.find((b) => b.type === 'tool_use')
   if (!block || block.type !== 'tool_use') throw new Error('no tool_use in response')
   return BriefSchema.parse(block.input)
+}
+
+/** `alerts.impact` / `alerts.recommendation` derived from the brief — no extra model call. */
+export function briefToAlertFields(brief: Brief): { impact: string; recommendation: string } {
+  return {
+    impact: brief.por_que_te_afecta,
+    recommendation: brief.pasos.map((s) => s.titulo).join('; '),
+  }
 }
