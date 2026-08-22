@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { CreateKeyForm } from "./create-key-form";
 import { RevokeKeyButton } from "./revoke-key-button";
+import { McpSetupInstructions } from "./mcp-setup-instructions";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -104,6 +105,9 @@ export default async function KeysPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* MCP Setup Instructions */}
+      <McpSetupInstructions />
 
       {/* Keys Table */}
       <Card>
