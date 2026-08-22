@@ -46,4 +46,26 @@ code to a personal repo:
 
 Your commits stay mirrored here for judging, while the deploy runs from the repo you control.
 
+## 🔗 Syncing this repo with `ComplAI-Crew/comply`
+
+The team also mirrors this repo to `git@github.com:ComplAI-Crew/comply.git`. To have your
+`git push` update **both** repos at once, configure your local `origin` with two push URLs
+(fetch stays pointed at this repo):
+
+```bash
+git remote set-url --add --push origin git@github.com:platanus-hack/platanus-hack-26-co-team-23.git
+git remote set-url --add --push origin git@github.com:ComplAI-Crew/comply.git
+```
+
+Verify it worked:
+
+```bash
+git remote -v
+# origin  git@github.com:platanus-hack/platanus-hack-26-co-team-23.git (fetch)
+# origin  git@github.com:platanus-hack/platanus-hack-26-co-team-23.git (push)
+# origin  git@github.com:ComplAI-Crew/comply.git (push)
+```
+
+You'll need SSH write access to both repos for the push to succeed on each remote.
+
 Have fun! 🚀
