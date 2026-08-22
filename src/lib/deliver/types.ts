@@ -4,6 +4,10 @@ import type { Brief } from '@/lib/alerts/brief'
 export type AlertPayload = {
   norm_title: string
   norm_url: string | null
+  // Who issued it and which official portal it came from — shown in every channel
+  // so the reader can trace the alert back to the source.
+  norm_issuer?: string | null
+  norm_source?: string | null
   impact: string
   recommendation: string
   severity: 'low' | 'medium' | 'high'

@@ -5,6 +5,8 @@ import type { AlertPayload } from './types'
 const base: AlertPayload = {
   norm_title: 'Resolución DIAN 000165',
   norm_url: 'https://dian.gov.co/norma',
+  norm_issuer: 'DIAN',
+  norm_source: 'dian',
   impact: 'Tus facturas serían rechazadas.',
   recommendation: 'Actualiza el XML.',
   severity: 'high',
@@ -44,6 +46,18 @@ describe('formatAlertText', () => {
     const text = formatAlertText({ ...base, brief: { ...brief, plazo: null } })
     expect(text).not.toContain('*Plazo:*')
     expect(text).not.toContain('Guía completa')
+  })
+
+  it('nombra la fuente en ambos formatos', () => {
+    for (const p of [base, { ...base, brief }]) {
+      expect(formatAlertText(p)).toContain('*Fuente:* Normograma DIAN')
+      expect(formatAlertText(p)).toContain('https://dian.gov.co/norma')
+    }
+  })
+
+  it('cae a la fuente genérica si la norma no la trae', () => {
+    const text = formatAlertText({ ...base, norm_issuer: null, norm_source: null })
+    expect(text).toContain('*Fuente:* Fuente oficial')
   })
 
   it('mantiene el pie legal en ambos formatos', () => {
