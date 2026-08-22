@@ -8,6 +8,11 @@ import type { ChannelConfig } from '@/lib/types'
 
 export const maxDuration = 300
 
+// Each new alert costs one LLM call (generateBrief) — sequential. Cap per run so we don't
+// blow maxDuration; dedup makes it resumable, so following runs (or the daily cron) drain
+// the rest. In steady state only a few norms are new per day, well under the cap.
+const MAX_NEW_ALERTS_PER_RUN = 20
+
 type Company = {
   id: string; name: string; company_type: string
   sectors: string[]; channels: ChannelConfig[]
@@ -26,9 +31,11 @@ async function handle(req: NextRequest) {
   const seen = new Set((existing ?? []).map((a) => `${a.company_id}:${a.norm_id}`))
 
   let alertsCreated = 0
+  let capped = false
   const channelStats: Record<string, number> = {}
 
   for (const company of (companies ?? []) as Company[]) {
+    if (capped) break
     if (!company.sectors?.length) continue // no profile → nothing to match
 
     // Reuse the matching behind the `normas_que_me_aplican` MCP tool.
@@ -46,6 +53,7 @@ async function handle(req: NextRequest) {
     const idByExt = new Map((idRows ?? []).map((r) => [r.external_id, r.id]))
 
     for (const norm of applicable) {
+      if (alertsCreated >= MAX_NEW_ALERTS_PER_RUN) { capped = true; break }
       const normId = idByExt.get(norm.external_id)
       if (!normId || seen.has(`${company.id}:${normId}`)) continue
 
@@ -77,7 +85,8 @@ async function handle(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ companies: companies?.length ?? 0, alertsCreated, channels: channelStats })
+  // capped=true → norms still pending; run again (or wait for the cron) to drain them.
+  return NextResponse.json({ companies: companies?.length ?? 0, alertsCreated, capped, channels: channelStats })
 }
 
 export { handle as GET, handle as POST }

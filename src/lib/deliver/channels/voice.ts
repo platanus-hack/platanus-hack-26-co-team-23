@@ -1,27 +1,40 @@
 import type { ChannelAdapter } from '../types'
 
-// Retell places the outbound call; dynamic variables are injected into the agent's prompt:
-// https://docs.retellai.com/api-references/create-phone-call
+// Outbound call via Twilio with inline TwiML <Say> (text-to-speech in Spanish).
+// One-way voice alert — no conversational agent needed for an alert. Free on the Twilio
+// trial (verified destination numbers only; Twilio prepends a trial notice).
+function escapeXml(s: string): string {
+  return s.replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]!))
+}
+
 export const voice: ChannelAdapter = {
   async send(config, payload) {
-    const res = await fetch('https://api.retellai.com/v2/create-phone-call', {
+    const sid = process.env.TWILIO_ACCOUNT_SID!
+    const token = process.env.TWILIO_AUTH_TOKEN!
+
+    // Prefer the brief's sharper wording when present; fall back to impact/recommendation.
+    const afecta = payload.brief?.por_que_te_afecta ?? payload.impact
+    const consecuencia = payload.brief?.si_no_haces_nada
+    const plazo = payload.brief?.plazo
+    const speech = [
+      'Hola, te llamo de complAI, tu asistente de cumplimiento normativo.',
+      `Se publicó una norma que te afecta: ${payload.norm_title}.`,
+      `Cómo te afecta: ${afecta}`,
+      consecuencia ? `Si no actúas: ${consecuencia}` : '',
+      `Nuestra recomendación: ${payload.recommendation}.`,
+      plazo ? `Plazo: ${plazo}.` : '',
+      'Te enviamos el detalle por escrito. Hasta pronto.',
+    ].filter(Boolean).join(' ')
+    const twiml = `<Response><Say voice="Polly.Mia" language="es-MX">${escapeXml(speech)}</Say></Response>`
+
+    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Calls.json`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.RETELL_API_KEY}` },
-      body: JSON.stringify({
-        from_number: process.env.RETELL_FROM_NUMBER,
-        to_number: config.phone,
-        override_agent_id: process.env.RETELL_AGENT_ID,
-        retell_llm_dynamic_variables: {
-          norm_title: payload.norm_title,
-          impact: payload.impact,
-          recommendation: payload.recommendation,
-          // Extra context when the alert has a brief. Unused variables are ignored by
-          // the agent, so this stays safe for prompts that don't reference them.
-          si_no_haces_nada: payload.brief?.si_no_haces_nada ?? '',
-          plazo: payload.brief?.plazo ?? '',
-        },
-      }),
+      headers: {
+        Authorization: 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ To: config.phone, From: process.env.TWILIO_FROM_NUMBER!, Twiml: twiml }),
     })
-    if (!res.ok) throw new Error(`retell ${res.status}: ${await res.text()}`)
+    if (!res.ok) throw new Error(`twilio ${res.status}: ${await res.text()}`)
   },
 }
