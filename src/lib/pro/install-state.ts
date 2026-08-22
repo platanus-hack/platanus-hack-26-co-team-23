@@ -1,16 +1,16 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 /**
- * El `state` que viaja a GitHub y vuelve en el callback de instalación.
+ * The `state` that travels to GitHub and comes back in the install callback.
  *
- * Va firmado porque GitHub nos lo devuelve tal cual: sin firma, cualquiera podría
- * llamar al callback con el companyId ajeno y apuntar su instalación a otra empresa.
- * La firma no reemplaza la verificación de sesión (cuando exista auth hay que sumarla),
- * pero sí impide fabricar un state para una empresa que no eres.
+ * It's signed because GitHub returns it to us as-is: without a signature, anyone could
+ * call the callback with someone else's companyId and point their installation at another
+ * company. The signature doesn't replace session verification (once auth exists it must be
+ * added), but it does prevent forging a state for a company that isn't yours.
  */
 const secret = () => {
   const s = process.env.GITHUB_STATE_SECRET
-  if (!s) throw new Error('falta GITHUB_STATE_SECRET')
+  if (!s) throw new Error('missing GITHUB_STATE_SECRET')
   return s
 }
 
@@ -20,7 +20,7 @@ export function signState(companyId: string): string {
   return `${companyId}.${sign(companyId)}`
 }
 
-/** companyId si la firma es válida, null si el state fue manipulado o no viene. */
+/** companyId if the signature is valid, null if the state was tampered with or missing. */
 export function verifyState(state: string | null): string | null {
   if (!state) return null
   const i = state.lastIndexOf('.')
@@ -32,7 +32,7 @@ export function verifyState(state: string | null): string | null {
   return companyId
 }
 
-/** URL a la que mandar al usuario para que instale la GitHub App en sus repos. */
+/** URL to send the user to so they install the GitHub App on their repos. */
 export function buildInstallUrl(companyId: string): string {
   const slug = process.env.GITHUB_APP_SLUG ?? 'complia-app'
   return `https://github.com/apps/${slug}/installations/new?state=${encodeURIComponent(signState(companyId))}`

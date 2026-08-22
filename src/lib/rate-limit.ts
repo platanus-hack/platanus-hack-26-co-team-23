@@ -1,8 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { hashApiKey } from '@/lib/api-keys'
 
-// Bucket por API key (hasheada, no exponemos la key en la tabla) si viene; si no, por IP.
-// Así el mismo límite cubre abuso autenticado y brute-force de keys pre-auth.
+// Bucket by API key (hashed, we never expose the key in the table) if present; otherwise by IP.
+// This way the same limit covers authenticated abuse and pre-auth key brute-forcing.
 function bucketFor(req: Request): string {
   const key = req.headers.get('x-api-key') ?? req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
   if (key?.startsWith('cai_')) return `key:${hashApiKey(key)}`
@@ -10,8 +10,8 @@ function bucketFor(req: Request): string {
   return `ip:${ip}`
 }
 
-// Fixed window vía función atómica en Postgres. Fail-open: si el limiter falla,
-// no tumbamos el servicio (el rate limiter nunca debe volverse un DoS de sí mismo).
+// Fixed window via an atomic Postgres function. Fail-open: if the limiter fails,
+// we don't take the service down (the rate limiter must never turn into its own DoS).
 export async function rateLimit(
   req: Request,
   { limit = 60, windowSec = 60 }: { limit?: number; windowSec?: number } = {},
@@ -21,7 +21,7 @@ export async function rateLimit(
     p_bucket: bucket, p_limit: limit, p_window: windowSec,
   })
   if (error) {
-    console.error('rate limit rpc falló (fail-open):', error.message)
+    console.error('rate limit rpc failed (fail-open):', error.message)
     return { ok: true, remaining: limit, retryAfter: 0 }
   }
   const count = Number(data)
@@ -30,6 +30,6 @@ export async function rateLimit(
 
 export const tooManyRequests = (retryAfter: number) =>
   new Response(
-    JSON.stringify({ error: 'Rate limit excedido. Reintenta en unos segundos.' }),
+    JSON.stringify({ error: 'Rate limit exceeded. Try again in a few seconds.' }),
     { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) } },
   )

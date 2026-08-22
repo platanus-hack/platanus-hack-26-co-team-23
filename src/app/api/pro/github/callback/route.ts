@@ -3,8 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyState } from '@/lib/pro/install-state'
 
 /**
- * Vuelta de la instalación de la GitHub App.
- * GitHub redirige acá con ?installation_id=N&setup_action=install&state=<firmado>.
+ * Return from the GitHub App installation.
+ * GitHub redirects here with ?installation_id=N&setup_action=install&state=<signed>.
  */
 export async function GET(req: NextRequest) {
   const url = req.nextUrl
@@ -16,12 +16,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(home)
   }
 
-  // Firmado por nosotros al mandar al usuario a instalar: si no valida, el state
-  // no salió de nuestro botón y no sabemos a qué empresa pertenece la instalación.
+  // Signed by us when we send the user to install: if it doesn't validate, the state
+  // didn't come from our button and we don't know which company the installation belongs to.
   const companyId = verifyState(url.searchParams.get('state'))
   if (!companyId) {
-    // Instalación iniciada desde GitHub (sin pasar por el botón) o state manipulado:
-    // devolvemos el id para que el usuario lo asocie desde el dashboard.
+    // Installation started from GitHub (without going through the button) or a tampered
+    // state: we return the id so the user can associate it from the dashboard.
     home.searchParams.set('installation_id', String(installationId))
     return NextResponse.redirect(home)
   }

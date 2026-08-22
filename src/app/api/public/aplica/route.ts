@@ -7,7 +7,7 @@ export const GET = withApiGuard(async (req) => {
   const tipoEmpresa = p.get('tipo_empresa')
   const sectores = (p.get('sectores') ?? '').split(',').map((s) => s.trim()).filter(Boolean)
   if (!tipoEmpresa || !sectores.length)
-    return NextResponse.json({ error: 'tipo_empresa y sectores son requeridos' }, { status: 400 })
+    return NextResponse.json({ error: 'tipo_empresa and sectores are required' }, { status: 400 })
 
   const data = await normsForProfile({
     tipoEmpresa, sectores,

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// complai-mcp: cliente stdio delgado. NO lleva credenciales — solo consume la API
-// pública read-only de complAI (las normas son datos públicos).
+// complai-mcp: thin stdio client. Carries NO credentials — it only consumes complAI's
+// public read-only API (norms are public data).
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
@@ -21,8 +21,8 @@ async function call(path, { params, body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   })
   if (res.status === 401)
-    throw new Error('API key requerida: exporta COMPLAI_API_KEY (genérala en https://complai-co.vercel.app/keys)')
-  if (res.status === 429) throw new Error('Rate limit excedido, reintenta en un momento.')
+    throw new Error('API key required: export COMPLAI_API_KEY (generate one at https://complai-co.vercel.app/keys)')
+  if (res.status === 429) throw new Error('Rate limit exceeded, try again in a moment.')
   if (!res.ok) throw new Error(`complAI API ${res.status}`)
   return res.json()
 }
@@ -31,26 +31,26 @@ const asText = (data) => ({ content: [{ type: 'text', text: JSON.stringify(data,
 
 const server = new McpServer({ name: 'complai', version: '0.4.0' })
 
-// --- consulta ---
+// --- query ---
 server.tool(
   'buscar_normas',
-  'Busca normativa colombiana reciente por texto libre en título/resumen.',
+  'Searches recent Colombian regulation by free text over title/summary.',
   { query: z.string(), limit: z.number().max(20).default(5) },
   async ({ query, limit }) => asText(await call('/api/public/norms', { params: { q: query, limit } })),
 )
 server.tool(
   'normas_por_sector',
-  `Normativa colombiana reciente que afecta a un sector. Válidos: ${SECTORS.join(', ')}.`,
+  `Recent Colombian regulation affecting a sector. Valid values: ${SECTORS.join(', ')}.`,
   { sector: z.enum(SECTORS), limit: z.number().max(20).default(10) },
   async ({ sector, limit }) => asText(await call('/api/public/norms', { params: { sector, limit } })),
 )
 
-// --- diferenciadores ---
+// --- differentiators ---
 server.tool(
   'cambios_recientes',
-  'Feed de cambio normativo: qué normativa colombiana salió desde una fecha, por sector y severidad mínima. Responde "¿qué cambió esta semana?".',
+  'Regulatory change feed: which Colombian regulation came out since a date, by sector and minimum severity. Answers "what changed this week?".',
   {
-    desde: z.string().describe('Fecha ISO YYYY-MM-DD').optional(),
+    desde: z.string().describe('ISO date YYYY-MM-DD').optional(),
     sector: z.enum(SECTORS).optional(),
     severidad_min: z.enum(SEVERITIES).default('low'),
     limit: z.number().max(20).default(10),
@@ -59,7 +59,7 @@ server.tool(
 )
 server.tool(
   'normas_que_me_aplican',
-  'Dado el perfil de una empresa (tipo de sociedad + sectores), devuelve SOLO la normativa que le aplica. Matching real contra el perfil, no búsqueda por tema.',
+  'Given a company profile (company type + sectors), returns ONLY the regulation that applies to it. Real matching against the profile, not topic search.',
   {
     tipo_empresa: z.enum(COMPANY_TYPES),
     sectores: z.array(z.enum(SECTORS)).min(1),
@@ -73,20 +73,20 @@ server.tool(
 )
 server.tool(
   'obligaciones_con_deadline',
-  'Calendario de cumplimiento: obligaciones concretas con fecha límite, ordenadas por deadline. Filtrable por sector y fecha tope.',
+  'Compliance calendar: concrete obligations with a deadline, ordered by due date. Filterable by sector and cutoff date.',
   {
     sector: z.enum(SECTORS).optional(),
-    antes_de: z.string().describe('Solo obligaciones con deadline <= esta fecha ISO').optional(),
+    antes_de: z.string().describe('Only obligations with a deadline <= this ISO date').optional(),
     limit: z.number().max(20).default(15),
   },
   async (a) => asText(await call('/api/public/obligaciones', { params: a })),
 )
 server.tool(
   'plan_remediacion_codigo',
-  'Dada una norma (por id o título), devuelve un plan concreto de cambios de código para cumplirla: qué tocar, qué modificar y cómo verificar. De la norma al código.',
+  'Given a norm (by id or title), returns a concrete code-change plan to comply with it: what to touch, what to modify, and how to verify. From norm to code.',
   {
-    norma: z.string().describe('external_id (ej: dian-resolucion_dian_0011_2026) o título/tema'),
-    stack: z.string().describe('Stack o descripción técnica del cliente, opcional').optional(),
+    norma: z.string().describe('external_id (e.g. dian-resolucion_dian_0011_2026) or the norm\'s title/topic'),
+    stack: z.string().describe('Client stack or technical description, optional').optional(),
   },
   async ({ norma, stack }) => asText(await call('/api/public/remediacion', { body: { norma, stack } })),
 )

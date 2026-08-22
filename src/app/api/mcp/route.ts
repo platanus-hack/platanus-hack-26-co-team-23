@@ -11,11 +11,11 @@ const asText = (data: unknown) => ({ content: [{ type: 'text' as const, text: JS
 const SEVERITIES = ['low', 'medium', 'high'] as const
 
 const handler = createMcpHandler((server) => {
-  // --- consulta (paridad de tabla) ---
+  // --- query (table parity) ---
   server.registerTool(
     'buscar_normas',
     {
-      description: 'Busca normativa colombiana reciente por texto libre en el título/resumen.',
+      description: 'Searches recent Colombian regulation by free text over title/summary.',
       inputSchema: { query: z.string(), limit: z.number().max(20).default(5) },
     },
     async ({ query, limit }) => {
@@ -29,7 +29,7 @@ const handler = createMcpHandler((server) => {
   server.registerTool(
     'normas_por_sector',
     {
-      description: `Normativa colombiana reciente que afecta a un sector. Sectores: ${SECTORS.join(', ')}.`,
+      description: `Recent Colombian regulation affecting a sector. Valid sectors: ${SECTORS.join(', ')}.`,
       inputSchema: { sector: z.enum(SECTORS), limit: z.number().max(20).default(10) },
     },
     async ({ sector, limit }) => {
@@ -40,13 +40,13 @@ const handler = createMcpHandler((server) => {
     },
   )
 
-  // --- diferenciadores: cambio × perfil × obligaciones × remediación ---
+  // --- differentiators: change × profile × obligations × remediation ---
   server.registerTool(
     'cambios_recientes',
     {
-      description: 'Feed de cambio normativo: qué normativa colombiana salió desde una fecha, filtrable por sector y severidad mínima. Úsalo para responder "¿qué cambió esta semana?".',
+      description: 'Regulatory change feed: which Colombian regulation came out since a date, filterable by sector and minimum severity. Use it to answer "what changed this week?".',
       inputSchema: {
-        desde: z.string().describe('Fecha ISO YYYY-MM-DD (ej: hace 7 días)').optional(),
+        desde: z.string().describe('ISO date YYYY-MM-DD (e.g. 7 days ago)').optional(),
         sector: z.enum(SECTORS).optional(),
         severidad_min: z.enum(SEVERITIES).default('low'),
         limit: z.number().max(20).default(10),
@@ -58,7 +58,7 @@ const handler = createMcpHandler((server) => {
   server.registerTool(
     'normas_que_me_aplican',
     {
-      description: 'Dado el perfil de una empresa (tipo de sociedad + sectores), devuelve SOLO la normativa que le aplica, con su severidad y obligaciones. Matching real contra el perfil, no búsqueda por tema.',
+      description: 'Given a company profile (company type + sectors), returns ONLY the regulation that applies to it, with its severity and obligations. Real matching against the profile, not topic search.',
       inputSchema: {
         tipo_empresa: z.enum(COMPANY_TYPES),
         sectores: z.array(z.enum(SECTORS)).min(1),
@@ -72,10 +72,10 @@ const handler = createMcpHandler((server) => {
   server.registerTool(
     'obligaciones_con_deadline',
     {
-      description: 'Calendario de cumplimiento: obligaciones concretas con fecha límite extraídas de la normativa, ordenadas por deadline. Filtrable por sector y fecha tope.',
+      description: 'Compliance calendar: concrete obligations with a deadline extracted from regulation, ordered by due date. Filterable by sector and cutoff date.',
       inputSchema: {
         sector: z.enum(SECTORS).optional(),
-        antes_de: z.string().describe('Solo obligaciones con deadline <= esta fecha ISO').optional(),
+        antes_de: z.string().describe('Only obligations with a deadline <= this ISO date').optional(),
         limit: z.number().max(20).default(15),
       },
     },
@@ -85,10 +85,10 @@ const handler = createMcpHandler((server) => {
   server.registerTool(
     'plan_remediacion_codigo',
     {
-      description: 'Dada una norma (por id o título), devuelve un plan concreto de cambios de código para cumplirla: qué componentes tocar, qué modificar y cómo verificar. El diferenciador de complAI: de la norma al código.',
+      description: 'Given a norm (by id or title), returns a concrete code-change plan to comply with it: which components to touch, what to modify, and how to verify. complAI\'s differentiator: from norm to code.',
       inputSchema: {
-        norma: z.string().describe('external_id (ej: dian-resolucion_dian_0011_2026) o título/tema de la norma'),
-        stack: z.string().describe('Stack o descripción técnica del cliente, opcional').optional(),
+        norma: z.string().describe('external_id (e.g. dian-resolucion_dian_0011_2026) or the norm\'s title/topic'),
+        stack: z.string().describe('Client stack or technical description, optional').optional(),
       },
     },
     async ({ norma, stack }) => asText(await remediationPlan({ norma, stack })),

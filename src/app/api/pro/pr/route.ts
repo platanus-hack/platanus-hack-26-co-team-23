@@ -12,9 +12,9 @@ export async function POST(req: NextRequest) {
     .select('*, norms(*), companies(*)')
     .eq('id', alertId)
     .single()
-  if (!alert) return NextResponse.json({ error: 'alert no encontrada' }, { status: 404 })
+  if (!alert) return NextResponse.json({ error: 'alert not found' }, { status: 404 })
   if (!alert.companies.github_repo)
-    return NextResponse.json({ error: 'empresa sin repo configurado' }, { status: 400 })
+    return NextResponse.json({ error: 'company has no repo configured' }, { status: 400 })
 
   try {
     const res = await openCompliancePR({
@@ -25,13 +25,13 @@ export async function POST(req: NextRequest) {
       obligations: alert.norms.obligations,
       impact: alert.impact,
     })
-    // La norma no toca este código: no es un error, simplemente no hay PR que abrir.
+    // The norm doesn't touch this code: not an error, there's simply no PR to open.
     if ('skipped' in res) return NextResponse.json(res)
 
     await db.from('alerts').update({ pr_url: res.prUrl }).eq('id', alertId)
     return NextResponse.json({ prUrl: res.prUrl })
   } catch (e) {
-    console.error('openCompliancePR falló:', e)
+    console.error('openCompliancePR failed:', e)
     return NextResponse.json({ error: (e as Error).message }, { status: 502 })
   }
 }
