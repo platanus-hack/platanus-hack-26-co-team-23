@@ -41,6 +41,7 @@ create table alerts (
   impact text not null,
   recommendation text not null,
   pr_url text,                             -- null hasta que PRO abre PR
+  brief jsonb,                             -- aviso generado: qué cambió, por qué afecta, riesgo, pasos
   created_at timestamptz default now(),
   unique (company_id, norm_id)
 );
