@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CumplAI",
+  title: "ComplAI",
   description: "La normativa colombiana convertida en un agente que vigila la ley por tu empresa.",
 };
 

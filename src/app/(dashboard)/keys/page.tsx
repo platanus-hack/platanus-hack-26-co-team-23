@@ -1,39 +1,183 @@
-import { createServerSupabase } from '@/lib/supabase/server'
-import { CreateKeyForm } from './create-key-form'
-import { revokeKey } from './actions'
+import { auth } from "@clerk/nextjs/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { CreateKeyForm } from "./create-key-form";
+import { RevokeKeyButton } from "./revoke-key-button";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 
-export default async function Keys() {
-  const supabase = await createServerSupabase()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return <p style={{ padding: 24 }}>Inicia sesión para gestionar tus API keys (<a href="/login">login</a>).</p>
+type ApiKey = {
+  id: string;
+  name: string;
+  key_prefix: string;
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+};
 
-  const { data: keys } = await supabase.from('api_keys')
-    .select('id, name, key_prefix, created_at, last_used_at, revoked_at')
-    .order('created_at', { ascending: false })
+async function getApiKeys(orgId: string) {
+  const supabase = supabaseAdmin();
+
+  // Encontrar la empresa por clerk_org_id
+  const { data: company, error: companyError } = await supabase
+    .from("companies")
+    .select("id")
+    .eq("clerk_org_id", orgId)
+    .single();
+
+  if (companyError || !company) {
+    return { error: "No se encontró información de tu empresa" };
+  }
+
+  // Listar las API keys de la empresa
+  const { data: keys, error: keysError } = await supabase
+    .from("api_keys")
+    .select("id, name, key_prefix, created_at, last_used_at, revoked_at")
+    .eq("company_id", company.id)
+    .order("created_at", { ascending: false });
+
+  if (keysError) {
+    return { error: "Error al cargar las API keys" };
+  }
+
+  return { keys: (keys || []) as ApiKey[] };
+}
+
+export default async function KeysPage() {
+  const { orgId, orgRole } = await auth();
+
+  if (!orgId) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-3xl font-bold">API Keys</h1>
+        <p className="text-muted-foreground">
+          No se pudo obtener la información de la organización.
+        </p>
+      </div>
+    );
+  }
+
+  const isAdmin = orgRole === "org:admin";
+  const result = await getApiKeys(orgId);
+
+  if (result.error) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-3xl font-bold">API Keys</h1>
+        <p className="text-muted-foreground">{result.error}</p>
+      </div>
+    );
+  }
+
+  const apiKeys = result.keys || [];
 
   return (
-    <div style={{ display: 'grid', gap: 16, padding: 24, maxWidth: 720 }}>
-      <h2>API Keys — acceso MCP</h2>
-      <p>Con tu key, cualquier agente consulta la normativa: <code>claude mcp add complai --env COMPLAI_API_KEY=cai_... -- npx -y complai-mcp</code></p>
-      <CreateKeyForm />
-      <table style={{ borderCollapse: 'collapse' }}>
-        <thead><tr style={{ textAlign: 'left' }}><th>Nombre</th><th>Key</th><th>Creada</th><th>Último uso</th><th></th></tr></thead>
-        <tbody>
-          {(keys ?? []).map((k) => (
-            <tr key={k.id} style={{ opacity: k.revoked_at ? 0.45 : 1, borderTop: '1px solid #ddd' }}>
-              <td>{k.name}</td>
-              <td><code>{k.key_prefix}…</code></td>
-              <td>{k.created_at?.slice(0, 10)}</td>
-              <td>{k.last_used_at?.slice(0, 16).replace('T', ' ') ?? '—'}</td>
-              <td>
-                {k.revoked_at ? 'revocada' : (
-                  <form action={revokeKey}><input type="hidden" name="id" value={k.id} /><button type="submit">Revocar</button></form>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold">API Keys</h1>
+        <p className="text-muted-foreground mt-2">
+          Gestiona las API keys para tu MCP server.
+        </p>
+      </div>
+
+      {/* Create Key Section (admin only) */}
+      {isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Generar nueva API key</CardTitle>
+            <CardDescription>
+              Crea una nueva API key para acceder al MCP server.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CreateKeyForm />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Keys Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>API Keys activas</CardTitle>
+          <CardDescription>
+            {apiKeys.length === 0
+              ? "No tienes API keys aún"
+              : `${apiKeys.filter((k) => !k.revoked_at).length} key(s) activa(s)`}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {apiKeys.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {isAdmin
+                ? "Genera tu primera API key arriba para empezar."
+                : "Tu administrador debe generar una API key."}
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Prefijo</TableHead>
+                    <TableHead>Creada</TableHead>
+                    <TableHead>Último uso</TableHead>
+                    <TableHead>Estado</TableHead>
+                    {isAdmin && <TableHead className="w-16">Acciones</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {apiKeys.map((key) => {
+                    const isRevoked = !!key.revoked_at;
+                    const createdDate = new Date(key.created_at);
+                    const lastUsedDate = key.last_used_at ? new Date(key.last_used_at) : null;
+
+                    return (
+                      <TableRow key={key.id} className={isRevoked ? "opacity-50" : ""}>
+                        <TableCell className="font-medium">{key.name}</TableCell>
+                        <TableCell className="font-mono text-sm">{key.key_prefix}</TableCell>
+                        <TableCell className="text-sm">
+                          {formatDistanceToNow(createdDate, {
+                            addSuffix: true,
+                            locale: es,
+                          })}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {lastUsedDate
+                            ? formatDistanceToNow(lastUsedDate, {
+                                addSuffix: true,
+                                locale: es,
+                              })
+                            : "Nunca"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={isRevoked ? "secondary" : "default"}>
+                            {isRevoked ? "Revocada" : "Activa"}
+                          </Badge>
+                        </TableCell>
+                        {isAdmin && (
+                          <TableCell>
+                            {!isRevoked && <RevokeKeyButton keyId={key.id} />}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
 }

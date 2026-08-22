@@ -10,6 +10,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { NavLinks } from "./nav-links";
 
 type DashboardLayoutProps = {
   children: React.ReactNode;
@@ -31,6 +32,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const navItems = [
     { label: "Alertas", href: "/feed" },
     { label: "Configuración", href: "/settings" },
+    { label: "API Keys", href: "/keys" },
   ];
 
   return (
@@ -41,22 +43,12 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
           {/* Logo */}
           <div className="flex items-center gap-3">
             <Link href="/feed" className="font-bold text-lg">
-              CumplAI
+              ComplAI
             </Link>
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6 flex-1 mx-6">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <NavLinks items={navItems} variant="desktop" />
 
           {/* Right side: Organization, User, Role Badge */}
           <div className="flex items-center gap-4">
@@ -83,17 +75,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                 <span className="sr-only">Abrir menú</span>
               </SheetTrigger>
               <SheetContent side="left" className="w-64">
-                <nav className="flex flex-col gap-4 mt-8">
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </nav>
+                <div className="mt-8">
+                  <NavLinks items={navItems} variant="mobile" />
+                </div>
               </SheetContent>
             </Sheet>
           </div>
