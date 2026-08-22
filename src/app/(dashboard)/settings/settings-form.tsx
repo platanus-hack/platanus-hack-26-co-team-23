@@ -256,29 +256,26 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
         </CardContent>
       </Card>
 
-      {/* PRO Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Configuración PRO</CardTitle>
-          <CardDescription>
-            Asigna quién revisa los PRs de cumplimiento que abre complAI.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="reviewer-github">Revisor GitHub</Label>
+      {/* Tier PRO: conexión del repo + el revisor, en una sola tarjeta.
+          La conexión se guarda sola; el revisor va con el submit del formulario. */}
+      {company && (
+        <GithubConnect companyId={company.id}>
+          <div className="space-y-2 border-t pt-4">
+            <Label htmlFor="reviewer-github">Revisor de los PRs</Label>
             <Input
               id="reviewer-github"
               value={reviewerGithub}
               onChange={(e) => setReviewerGithub(e.target.value)}
-              placeholder="username"
+              placeholder="usuario-de-github"
             />
+            <p className="text-sm text-muted-foreground">
+              A quién se le pide revisión en cada PR que abre complAI. Debe tener acceso al
+              repositorio y no puede ser la cuenta que instaló la app: GitHub no permite
+              auto-asignarse una revisión.
+            </p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* GitHub connect: se guarda solo, fuera del submit del formulario */}
-      {company && <GithubConnect companyId={company.id} />}
+        </GithubConnect>
+      )}
 
       {/* Submit Button */}
       <div className="flex justify-end">

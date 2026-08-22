@@ -29,9 +29,12 @@ type ReposState =
       manageUrl: string;
     };
 
-type Props = { companyId: string };
+/** `children` = campos del tier PRO que solo tienen sentido con un repo conectado
+ *  (hoy, el revisor). Van aquí para no partir la configuración en dos tarjetas,
+ *  pero los guarda el submit del formulario que los pasa. */
+type Props = { companyId: string; children?: React.ReactNode };
 
-export function GithubConnect({ companyId }: Props) {
+export function GithubConnect({ companyId, children }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -207,6 +210,7 @@ export function GithubConnect({ companyId }: Props) {
                 {generating ? "Generando…" : "Generar COMPLIA.md"}
               </Button>
             </div>
+            {children}
           </div>
         )}
 
