@@ -6,16 +6,21 @@ Superfinanciera, normativa SIC y el inventario SUIN-Juriscol, analizadas y clasi
 
 ## Uso
 
+Necesitas una API key — genérala gratis en [complai-co.vercel.app/keys](https://complai-co.vercel.app/keys).
+
 **Claude Code:**
 
 ```bash
-claude mcp add complai -- npx -y complai-mcp
+claude mcp add complai --env COMPLAI_API_KEY=cai_tu_key -- npx -y complai-mcp
 ```
 
 **Claude Desktop** (`claude_desktop_config.json`):
 
 ```json
-{ "mcpServers": { "complai": { "command": "npx", "args": ["-y", "complai-mcp"] } } }
+{ "mcpServers": { "complai": {
+  "command": "npx", "args": ["-y", "complai-mcp"],
+  "env": { "COMPLAI_API_KEY": "cai_tu_key" }
+} } }
 ```
 
 ## Tools
@@ -30,6 +35,7 @@ deadline), severidad y link a la fuente oficial.
 
 ## Config
 
+- `COMPLAI_API_KEY` — tu API key (requerida; se genera en el dashboard).
 - `COMPLAI_API_URL` — override del backend (default: producción de complAI).
 
 ---
