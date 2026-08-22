@@ -14,7 +14,6 @@ type SettingsFormData = {
     config: Record<string, string>;
     min_severity?: string;
   }>;
-  github_repo: string | null;
   reviewer_github: string | null;
 };
 
@@ -74,7 +73,6 @@ export async function updateCompanySettings(data: SettingsFormData) {
           company_type: data.company_type,
           sectors: validSectors,
           channels: channels,
-          github_repo: data.github_repo || null,
           reviewer_github: data.reviewer_github || null,
         },
         { onConflict: "clerk_org_id" },
