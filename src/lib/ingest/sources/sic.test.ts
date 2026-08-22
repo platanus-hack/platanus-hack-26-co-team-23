@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { parseSicRows } from './sic'
 
 describe('parseSicRows', () => {
-  it('extrae una ficha de una fila de la tabla del repositorio', () => {
+  it('extracts a record from a repository table row', () => {
     const html = `
       <table>
         <tr><th>Tipo</th><th>Tema</th><th>Nombre</th><th>Descripción</th><th>Fecha</th></tr>
@@ -30,12 +30,12 @@ describe('parseSicRows', () => {
     expect(items[0].raw_text).toContain('Protección al consumidor')
   })
 
-  it('ignora filas sin suficientes columnas o sin nombre', () => {
+  it('ignores rows with too few columns or no name', () => {
     const html = '<table><tr><th>Tipo</th><th>Tema</th></tr><tr><td>x</td><td>y</td><td></td><td>z</td><td>w</td></tr></table>'
     expect(parseSicRows(html, 'circular', 10)).toEqual([])
   })
 
-  it('respeta el límite', () => {
+  it('respects the limit', () => {
     const row = (n: number) => `<tr><td>t</td><td>tema</td><td>Norma ${n}</td><td>desc</td><td>2026</td></tr>`
     const html = `<table>${row(1)}${row(2)}${row(3)}</table>`
     expect(parseSicRows(html, 'circular', 2)).toHaveLength(2)

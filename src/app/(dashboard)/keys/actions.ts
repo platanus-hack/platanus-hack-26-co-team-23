@@ -6,13 +6,13 @@ import { generateApiKey } from "@/lib/api-keys";
 import { revalidatePath } from "next/cache";
 
 /**
- * Crea una nueva API key para la empresa de la organización activa.
- * Solo org:admin puede crear keys.
+ * Creates a new API key for the active organization's company.
+ * Only org:admin can create keys.
  */
 export async function createKey(name: string) {
   const { userId, orgId, orgRole } = await auth();
 
-  // Validar que es admin
+  // Validate that it's an admin
   if (orgRole !== "org:admin") {
     return { error: "Solo administradores pueden generar API keys" };
   }
@@ -28,7 +28,7 @@ export async function createKey(name: string) {
   try {
     const supabase = supabaseAdmin();
 
-    // Encontrar la empresa por clerk_org_id
+    // Find the company by clerk_org_id
     const { data: company, error: companyError } = await supabase
       .from("companies")
       .select("id")
@@ -39,10 +39,10 @@ export async function createKey(name: string) {
       return { error: "No se encontró la empresa" };
     }
 
-    // Generar la API key
+    // Generate the API key
     const { raw, prefix, hash } = generateApiKey();
 
-    // Insertar en la tabla api_keys
+    // Insert into the api_keys table
     const { error: insertError } = await supabase
       .from("api_keys")
       .insert({
@@ -58,10 +58,10 @@ export async function createKey(name: string) {
       return { error: "Error al guardar la API key" };
     }
 
-    // Revalidar el path para que la lista se actualice
+    // Revalidate the path so the list refreshes
     revalidatePath("/keys");
 
-    // Devolver solo la key cruda (una única vez)
+    // Return only the raw key (a single time)
     return { raw };
   } catch (error) {
     console.error("Error creating API key:", error);
@@ -70,13 +70,13 @@ export async function createKey(name: string) {
 }
 
 /**
- * Revoca una API key existente.
- * Solo org:admin puede revocar keys, y solo de su propia empresa.
+ * Revokes an existing API key.
+ * Only org:admin can revoke keys, and only for its own company.
  */
 export async function revokeKey(id: string) {
   const { orgId, orgRole } = await auth();
 
-  // Validar que es admin
+  // Validate that it's an admin
   if (orgRole !== "org:admin") {
     return { error: "Solo administradores pueden revocar API keys" };
   }
@@ -88,7 +88,7 @@ export async function revokeKey(id: string) {
   try {
     const supabase = supabaseAdmin();
 
-    // Encontrar la empresa
+    // Find the company
     const { data: company, error: companyError } = await supabase
       .from("companies")
       .select("id")
@@ -99,7 +99,7 @@ export async function revokeKey(id: string) {
       return { error: "No se encontró la empresa" };
     }
 
-    // Verificar que la key pertenece a esta empresa
+    // Verify the key belongs to this company
     const { data: apiKey, error: keyError } = await supabase
       .from("api_keys")
       .select("id")
@@ -111,7 +111,7 @@ export async function revokeKey(id: string) {
       return { error: "No se encontró la API key o no tienes permiso para revocarla" };
     }
 
-    // Revocar la key
+    // Revoke the key
     const { error: revokeError } = await supabase
       .from("api_keys")
       .update({ revoked_at: new Date().toISOString() })
@@ -122,7 +122,7 @@ export async function revokeKey(id: string) {
       return { error: "Error al revocar la API key" };
     }
 
-    // Revalidar el path
+    // Revalidate the path
     revalidatePath("/keys");
 
     return { success: true };

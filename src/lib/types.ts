@@ -22,15 +22,15 @@ export type ChannelType = (typeof CHANNEL_TYPES)[number]
 
 export type ChannelConfig = {
   type: ChannelType
-  min_severity?: 'low' | 'medium' | 'high'   // omitido = recibe todo
-  config: Record<string, string>              // webhook_url | address | phone, según el canal
+  min_severity?: 'low' | 'medium' | 'high'   // omitted = receives everything
+  config: Record<string, string>              // webhook_url | address | phone, depending on the channel
 }
 
 export type Company = {
   id: string; clerk_org_id: string; clerk_user_id: string | null; name: string; company_type: string
   sectors: string[]; channels: ChannelConfig[]
   github_repo: string | null; reviewer_github: string | null
-  github_installation_id: number | null   // instalación de la GitHub App; null = fallback a GITHUB_TOKEN
+  github_installation_id: number | null   // GitHub App installation; null = fallback to GITHUB_TOKEN
 }
 
 export type Alert = {

@@ -1,209 +1,208 @@
-# Meta del frontend de ComplAI (rama `feat/frontend-dashboard`) — iteración 2
+# ComplAI frontend goal (branch `feat/frontend-dashboard`) — iteration 2
 
-> Contexto para los subagentes `frontend-developer` y `frontend-reviewer`.
-> Este documento es el criterio de "terminado" — el loop developer↔reviewer
-> corre hasta que TODO lo de la sección "Criterios de aceptación" esté ✅.
-> La iteración 1 (shell del dashboard, `/settings`, `/feed`, `/sign-in`,
-> `/sign-up`, Clerk, shadcn) ya está hecha y en PR. Esta iteración 2 es una
-> ronda de feedback sobre esa base — no repitas ni reviertas lo ya hecho.
+> Context for the `frontend-developer` and `frontend-reviewer` subagents.
+> This document is the "done" criteria — the developer↔reviewer loop
+> runs until EVERYTHING in the "Acceptance criteria" section is ✅.
+> Iteration 1 (dashboard shell, `/settings`, `/feed`, `/sign-in`,
+> `/sign-up`, Clerk, shadcn) is already done and in a PR. This iteration 2 is a
+> feedback round on top of that base — don't repeat or revert what's already done.
 
-## Ya hecho (no repetir)
+## Already done (don't repeat)
 
-- shadcn inicializado (base UI, preset nova, Tailwind v4). Componentes ya
-  añadidos: button, input, label, checkbox, switch, select, tabs, card,
+- shadcn initialized (base UI, nova preset, Tailwind v4). Components already
+  added: button, input, label, checkbox, switch, select, tabs, card,
   badge, separator, toggle/toggle-group, avatar, dropdown-menu, sonner,
-  skeleton, textarea, alert, sheet. Si falta un componente, añádelo con
-  `pnpm exec shadcn add <nombre>` (o el MCP de shadcn si está disponible) —
-  **nunca lo escribas a mano ni lo copies de otra librería.**
-- Clerk instalado y cableado: `ClerkProvider` en `src/app/layout.tsx`,
-  `src/proxy.ts` protege `/settings` y `/feed`. Auth es Clerk, **no**
-  Supabase Auth — la empresa cuelga de la organización (`clerk_org_id`),
-  no de un usuario. Usa `auth()` de `@clerk/nextjs/server` (sus propias
-  `orgId`/`userId`/`orgRole`, **nunca** `sessionClaims.org_id` /
-  `sessionClaims.sub` — eso ya causó un bug real de datos huérfanos en la
-  iteración 1, no lo repitas).
-- `supabase/schema.sql`: `companies.clerk_org_id` (no `owner_user_id`).
-  `src/lib/supabase/admin.ts` es el ÚNICO cliente de Supabase que se usa
-  aquí (service role) — no crear `src/lib/supabase/server.ts` con
-  `@supabase/ssr`/cookies al estilo Supabase Auth, ese patrón no aplica.
+  skeleton, textarea, alert, sheet. If a component is missing, add it with
+  `pnpm exec shadcn add <name>` (or the shadcn MCP if available) —
+  **never hand-write it or copy it from another library.**
+- Clerk installed and wired: `ClerkProvider` in `src/app/layout.tsx`,
+  `src/proxy.ts` protects `/settings` and `/feed`. Auth is Clerk, **not**
+  Supabase Auth — the company hangs off the organization (`clerk_org_id`),
+  not a user. Use `auth()` from `@clerk/nextjs/server` (its own
+  `orgId`/`userId`/`orgRole`, **never** `sessionClaims.org_id` /
+  `sessionClaims.sub` — that already caused a real orphaned-data bug in
+  iteration 1, don't repeat it).
+- `supabase/schema.sql`: `companies.clerk_org_id` (not `owner_user_id`).
+  `src/lib/supabase/admin.ts` is the ONLY Supabase client used
+  here (service role) — do not create `src/lib/supabase/server.ts` with
+  `@supabase/ssr`/cookies in the Supabase-Auth style, that pattern doesn't apply.
 - `src/app/(dashboard)/layout.tsx`, `settings/`, `feed/`, `sign-in/`,
-  `sign-up/` ya implementados y funcionales contra Supabase real.
-- El bug de CSS que rompía TODAS las utilidades de padding/margin de
-  Tailwind ya está arreglado (no había `@layer` en un reset heredado del
-  scaffold) — si algo se ve "roto"/sin espaciado, ese no es el problema,
-  investiga la causa real antes de tocar `globals.css`.
+  `sign-up/` already implemented and working against real Supabase.
+- The CSS bug that broke ALL of Tailwind's padding/margin utilities is
+  already fixed (there was no `@layer` in a reset inherited from the
+  scaffold) — if something looks "broken"/unspaced, that's not the issue,
+  investigate the real cause before touching `globals.css`.
 
-## Alcance de esta iteración — feedback a resolver
+## Scope of this iteration — feedback to resolve
 
-### 1. Indicar visualmente los campos requeridos en `/settings`
+### 1. Visually indicate required fields in `/settings`
 
-`settings-form.tsx` valida `name` y `company_type` como requeridos (ve
-`handleSubmit`) pero el usuario no tiene forma de saber cuáles son antes
-de que el toast de error aparezca. Añade un asterisco rojo (`text-destructive`
-o similar, ej. `<span className="text-destructive">*</span>` después del
-texto del `Label`) en los `Label` de **Nombre de la empresa** y **Tipo de
-sociedad** (los dos únicos campos actualmente requeridos por el server
-action). No marques como requeridos campos que el server action no exige.
+`settings-form.tsx` validates `name` and `company_type` as required (see
+`handleSubmit`) but the user has no way to know which fields those are before
+the error toast appears. Add a red asterisk (`text-destructive`
+or similar, e.g. `<span className="text-destructive">*</span>` after
+the `Label` text) on the `Label`s for **"Nombre de la empresa"** and **"Tipo de
+sociedad"** (the only two fields currently required by the server
+action). Do not mark fields as required if the server action doesn't require them.
 
-### 2. Rebrand: es "ComplAI", no "CumplAI"
+### 2. Rebrand: it's "ComplAI", not "CumplAI"
 
-Busca y reemplaza **todas** las apariciones visibles de "CumplAI" (y
-cualquier resto de "CumplIA") por **"ComplAI"** en el código fuente de
-`src/` (título de `<head>`, logo del header, textos de `/sign-in`,
-`/sign-up`, estados vacíos de `/settings` y `/feed`, cualquier copy).
-Usa `grep -rn "CumplAI\|CumplIA" src/` para encontrarlos todos — al
-momento de escribir esto hay ocurrencias en `layout.tsx`, `sign-in/page.tsx`,
+Find and replace **every** visible occurrence of "CumplAI" (and
+any leftover "CumplIA") with **"ComplAI"** in the `src/` source code
+(`<head>` title, header logo, `/sign-in` and `/sign-up` copy,
+`/settings` and `/feed` empty states, any copy).
+Use `grep -rn "CumplAI\|CumplIA" src/` to find them all — at
+the time of writing there are occurrences in `layout.tsx`, `sign-in/page.tsx`,
 `sign-up/page.tsx`, `(dashboard)/layout.tsx`, `(dashboard)/settings/page.tsx`,
 `(dashboard)/settings/settings-form.tsx`, `(dashboard)/feed/page.tsx`.
-**No toques** `.env.example`/`.env.local` ni nada relacionado al nombre de
-la app de Clerk (`app_3IGYo5UOL2tYGSklhjEzgeOveO6`) — ese es un recurso
-externo compartido, renombrarlo no es parte de este alcance.
+**Do not touch** `.env.example`/`.env.local` or anything related to the
+Clerk app name (`app_3IGYo5UOL2tYGSklhjEzgeOveO6`) — that's a shared
+external resource, renaming it is not part of this scope.
 
-### 3. El tab activo del nav del header no se distingue
+### 3. The active tab in the header nav isn't distinguishable
 
-En `(dashboard)/layout.tsx`, el nav (`Alertas` / `Configuración`, desktop
-y el `Sheet` de móvil) usa siempre `text-muted-foreground hover:text-foreground`
-sin importar en qué ruta estás — no hay forma de saber cuál está
-seleccionado. Arréglalo:
+In `(dashboard)/layout.tsx`, the nav (**"Alertas"** / **"Configuración"**, desktop
+and the mobile `Sheet`) always uses `text-muted-foreground hover:text-foreground`
+regardless of which route you're on — there's no way to tell which is
+selected. Fix it:
 
-- Extrae el nav a un client component (ej. `src/app/(dashboard)/nav-links.tsx`,
-  `"use client"`) que use `usePathname()` de `next/navigation` para saber
-  la ruta activa (compara con `startsWith` porque `/feed` y `/settings`
-  pueden tener subrutas).
-- El link activo debe verse claramente distinto del inactivo: por ejemplo
-  `text-foreground font-medium` + un indicador visual (subrayado,
-  `border-b-2 border-primary`, o fondo con `bg-accent` en un pill) — no
-  alcanza con solo cambiar el color de texto sutilmente, tiene que notarse
-  a simple vista. Aplica lo mismo en el nav de escritorio y en el del
-  `Sheet` móvil.
-- Sigue usando componentes/tokens de shadcn (no inventes colores fuera
-  del theme).
+- Extract the nav into a client component (e.g. `src/app/(dashboard)/nav-links.tsx`,
+  `"use client"`) that uses `usePathname()` from `next/navigation` to know
+  the active route (compare with `startsWith` since `/feed` and `/settings`
+  can have subroutes).
+- The active link must look clearly different from the inactive ones: for example
+  `text-foreground font-medium` + a visual indicator (underline,
+  `border-b-2 border-primary`, or a pill with `bg-accent` background) — a subtle
+  text-color change alone isn't enough, it needs to be obvious at a glance.
+  Apply the same to both the desktop nav and the mobile `Sheet` nav.
+- Keep using shadcn components/tokens (don't invent colors outside
+  the theme).
 
-### 4 y 5. Diseñar e implementar generación de API keys para el MCP
+### 4 and 5. Design and implement API key generation for the MCP
 
-Hay un PR de otro track (`ComplAI-Crew/comply#5`, **sin mergear**) que ya
-resuelve esto para un modelo con Supabase Auth (`auth.uid()`,
-`owner_user_id`) — **ese modelo no aplica aquí** (aquí el login es Clerk).
-Usa ese PR solo como referencia de *qué* construir (tabla `api_keys`, hash
-SHA-256, prefijo visible, revocación, guard en las rutas MCP), no copies
-su código tal cual (usa HTML a mano sin shadcn, y su esquema requiere
-Supabase Auth). Implementa la versión adaptada a Clerk + shadcn:
+There's a PR from another track (`ComplAI-Crew/comply#5`, **unmerged**) that already
+solves this for a model with Supabase Auth (`auth.uid()`,
+`owner_user_id`) — **that model doesn't apply here** (auth here is Clerk).
+Use that PR only as a reference for *what* to build (`api_keys` table, SHA-256
+hash, visible prefix, revocation, guard on the MCP routes), don't copy
+its code as-is (it uses hand-written HTML with no shadcn, and its schema requires
+Supabase Auth). Implement the version adapted to Clerk + shadcn:
 
-**Esquema** (`supabase/api-keys.sql`, migración incremental — no reescribas
-`schema.sql`, este es un archivo nuevo a correr aparte, igual que el resto
-del schema; si tienes acceso al MCP de Supabase para aplicar la migración
-directamente, úsalo, si no, deja el `.sql` listo):
+**Schema** (`supabase/api-keys.sql`, incremental migration — don't rewrite
+`schema.sql`, this is a new file to run separately, same as the rest
+of the schema; if you have access to the Supabase MCP to apply the migration
+directly, use it, otherwise leave the `.sql` ready):
 
 ```sql
 create table api_keys (
   id uuid primary key default gen_random_uuid(),
   company_id uuid references companies not null,
-  clerk_user_id text not null,       -- quién la generó
-  name text not null,                -- etiqueta libre ("CI de Acme", "agente interno")
-  key_prefix text not null,          -- primeros chars visibles (cai_a1b2c3)
-  key_hash text not null unique,     -- sha256 hex de la key completa; la key cruda nunca se persiste
+  clerk_user_id text not null,       -- who generated it
+  name text not null,                -- free-form label ("Acme CI", "internal agent")
+  key_prefix text not null,          -- first visible chars (cai_a1b2c3)
+  key_hash text not null unique,     -- sha256 hex of the full key; the raw key is never persisted
   created_at timestamptz default now(),
   last_used_at timestamptz,
   revoked_at timestamptz
 );
 
--- Sin sesión de Supabase Auth aquí tampoco: mismo patrón que companies/alerts,
--- RLS encendida como cierre por defecto, todo acceso pasa por admin.ts
--- validando organización/rol contra Clerk en el server.
+-- No Supabase Auth session here either: same pattern as companies/alerts,
+-- RLS on as a default lockdown, all access goes through admin.ts
+-- validating organization/role against Clerk on the server.
 alter table api_keys enable row level security;
 ```
 
-**`src/lib/api-keys.ts`** (nuevo, junto a los demás helpers de `src/lib/`):
-- `generateApiKey()`: crea `raw = "cai_" + randomBytes(24).toString("hex")`,
-  devuelve `{ raw, prefix: raw.slice(0, 10), hash: sha256(raw) }` (usa
+**`src/lib/api-keys.ts`** (new, alongside the other `src/lib/` helpers):
+- `generateApiKey()`: creates `raw = "cai_" + randomBytes(24).toString("hex")`,
+  returns `{ raw, prefix: raw.slice(0, 10), hash: sha256(raw) }` (use
   `node:crypto`, `createHash("sha256")`).
-- `hashApiKey(raw)`: el mismo sha256 hex, para validar contra `key_hash`.
-- No necesitas replicar el `MASTER_API_KEY` de bootstrap del PR de
-  referencia — no existe esa env var en este proyecto, no la inventes.
+- `hashApiKey(raw)`: the same sha256 hex, to validate against `key_hash`.
+- You don't need to replicate the reference PR's bootstrap `MASTER_API_KEY` —
+  that env var doesn't exist in this project, don't invent it.
 
-**`src/app/(dashboard)/keys/page.tsx`** (nueva ruta, protegida igual que
-`/settings` y `/feed` por `src/proxy.ts` — añade `/keys` al matcher):
-Server component: lee `auth()` (orgId/userId/orgRole), busca `company_id`
-por `clerk_org_id` vía `admin.ts`, lista las keys de esa empresa
+**`src/app/(dashboard)/keys/page.tsx`** (new route, protected the same way as
+`/settings` and `/feed` via `src/proxy.ts` — add `/keys` to the matcher):
+Server component: reads `auth()` (orgId/userId/orgRole), looks up `company_id`
+by `clerk_org_id` via `admin.ts`, lists that company's keys
 (`name`, `key_prefix`, `created_at`, `last_used_at`, `revoked_at`,
-ordenadas por `created_at desc`). Usa `Card`/`Table`-like markup con
-componentes de shadcn (si no existe `table.tsx`, añádelo con
-`pnpm exec shadcn add table`) — **nunca** una `<table>` con estilos
-inline como el PR de referencia. Solo `org:admin` puede generar/revocar
-(igual patrón que `/settings`: si no es admin, vista de solo lectura de
-la lista, sin controles).
+ordered by `created_at desc`). Use `Card`/`Table`-like markup with
+shadcn components (if `table.tsx` doesn't exist, add it with
+`pnpm exec shadcn add table`) — **never** a `<table>` with inline
+styles like the reference PR. Only `org:admin` can generate/revoke
+(same pattern as `/settings`: if not an admin, read-only view of
+the list, with no controls).
 
 **`src/app/(dashboard)/keys/actions.ts`** (Server Actions):
-- `createKey(name: string)`: valida `orgRole === 'org:admin'` en el
-  servidor, resuelve `company_id` por `clerk_org_id`, genera la key,
-  inserta la fila, hace `revalidatePath('/keys')`, devuelve `{ raw }`
-  (la key cruda) o `{ error }`. La key cruda **solo se devuelve esta
-  vez** — nunca se vuelve a poder leer.
-- `revokeKey(id: string)`: valida admin + que la key pertenezca a la
-  empresa de la organización activa (no confíes solo en el `id` del
-  formulario), setea `revoked_at = now()`.
+- `createKey(name: string)`: validates `orgRole === 'org:admin'` on the
+  server, resolves `company_id` by `clerk_org_id`, generates the key,
+  inserts the row, calls `revalidatePath('/keys')`, returns `{ raw }`
+  (the raw key) or `{ error }`. The raw key is **only ever returned
+  this once** — it can never be read again.
+- `revokeKey(id: string)`: validates admin + that the key belongs to the
+  active organization's company (don't trust the form's `id` alone),
+  sets `revoked_at = now()`.
 
 **`src/app/(dashboard)/keys/create-key-form.tsx`** (client component):
-Formulario shadcn (`Input` + `Button`) para generar una key con nombre.
-Cuando `createKey` devuelve `raw`, muéstrala en un `Alert` (variante
-success/default de shadcn) con copy tipo "cópiala ahora, no se vuelve a
-mostrar" — usa un botón de copiar al portapapeles si es simple de añadir,
-si no, basta con que el texto sea seleccionable.
+shadcn form (`Input` + `Button`) to generate a named key.
+When `createKey` returns `raw`, show it in an `Alert` (shadcn
+success/default variant) with copy like "copy it now, it won't be
+shown again" — use a copy-to-clipboard button if it's simple to add,
+otherwise it's enough for the text to be selectable.
 
-**Nav**: añade "API Keys" (→ `/keys`) al array `navItems` de
-`(dashboard)/layout.tsx` (o del nuevo `nav-links.tsx` del punto 3).
+**Nav**: add "API Keys" (→ `/keys`) to the `navItems` array in
+`(dashboard)/layout.tsx` (or the new `nav-links.tsx` from item 3).
 
-**Rutas MCP existentes** (`src/app/api/mcp/route.ts` y
-`src/app/api/public/norms/route.ts`): estas rutas hoy son 100% públicas
-sin ningún guard, y son de otro track (M5). Añadir el guard de API key
-ahí es un cambio de comportamiento cross-track (puede romper la demo si
-algo más las está usando sin key todavía) — **no las toques** en esta
-iteración; el guard queda listo en `src/lib/api-keys.ts`
-(`validateApiKey(req)` que revisa header `x-api-key` o
-`Authorization: Bearer cai_...`) para que el dueño de esas rutas lo
-enchufe cuando le corresponda. Documenta esto explícitamente en el reporte
-final si haces esta implementación.
+**Existing MCP routes** (`src/app/api/mcp/route.ts` and
+`src/app/api/public/norms/route.ts`): these routes are currently 100% public
+with no guard at all, and belong to another track (M5). Adding the API key
+guard there is a cross-track behavior change (it could break the demo if
+something else is already using them without a key) — **do not touch them** in
+this iteration; the guard is ready to use in `src/lib/api-keys.ts`
+(`validateApiKey(req)`, which checks the `x-api-key` header or
+`Authorization: Bearer cai_...`) so the owner of those routes can plug it in
+when it's their turn. Document this explicitly in the final report if you do
+this implementation.
 
-### 6. (Ya cubierto) Revisar `ComplAI-Crew/comply#5`
+### 6. (Already covered) Review `ComplAI-Crew/comply#5`
 
-Ya está resumido arriba — es la referencia para el punto 4/5, no una
-tarea aparte.
+Already summarized above — it's the reference for item 4/5, not a separate
+task.
 
-## Explícitamente FUERA de alcance (no lo construyas)
+## Explicitly OUT of scope (do not build)
 
-- Cualquier pantalla o control para configurar tema/apariencia.
-- Pulido visual más allá de shadcn: nada de ilustraciones, gradientes,
-  animaciones decorativas propias.
-- Wireing el guard de API key dentro de `/api/mcp` o `/api/public/norms`
-  (ver nota arriba — cross-track, fuera de esta iteración).
-- Matching real, dispatcher de canales, análisis de repo/PR — no es tu
+- Any screen or control to configure theme/appearance.
+- Visual polish beyond shadcn: no custom illustrations, gradients,
+  or decorative animations.
+- Wiring the API key guard inside `/api/mcp` or `/api/public/norms`
+  (see note above — cross-track, out of scope for this iteration).
+- Real matching, channel dispatcher, repo/PR analysis — not your
   track.
 
-## Criterios de aceptación (marcar cada uno; el reviewer los verifica)
+## Acceptance criteria (check off each one; the reviewer verifies them)
 
-- [ ] `pnpm build` termina sin errores (typecheck incluido).
-- [ ] `pnpm lint` sin errores (y sin diffs de Prettier si hay config —
-      verificar primero si existe antes de exigirlo).
-- [ ] Labels de "Nombre de la empresa" y "Tipo de sociedad" en
-      `/settings` muestran un asterisco rojo (u otro indicador visual
-      claro) de campo requerido.
-- [ ] Cero apariciones de "CumplAI"/"CumplIA" en `src/` — todo dice
-      "ComplAI" (`grep -rn "CumplAI\|CumplIA" src/` no devuelve nada).
-- [ ] El tab activo del nav del header (desktop y móvil) se distingue
-      claramente del inactivo al navegar entre `/feed` y `/settings`
-      (y `/keys`).
-- [ ] `/keys` existe, protegida por `src/proxy.ts`, lista las keys de la
-      empresa activa, permite generar (solo admin) mostrando la key
-      cruda una única vez, y revocar (solo admin).
-- [ ] `api_keys` tiene RLS encendida y ningún acceso pasa fuera de
-      `admin.ts`; la key cruda nunca se persiste, solo su hash.
-- [ ] Todo componente de interfaz nuevo viene de `src/components/ui/*`
-      (shadcn) — sin HTML a mano reinventando inputs/botones/tablas.
-- [ ] Verificado visualmente en el navegador real (Claude en Chrome, no
-      el navegador sandboxeado): `/settings` muestra los asteriscos,
-      el nav marca la ruta activa, `/keys` genera y revoca una key sin
-      errores de consola. Probado también en ~390px de ancho.
-- [ ] Nada de "Explícitamente fuera de alcance" quedó implementado.
+- [ ] `pnpm build` finishes with no errors (typecheck included).
+- [ ] `pnpm lint` with no errors (and no Prettier diffs if a config exists —
+      check first whether one exists before requiring it).
+- [ ] The **"Nombre de la empresa"** and **"Tipo de sociedad"** labels in
+      `/settings` show a red asterisk (or another clear visual indicator)
+      for required fields.
+- [ ] Zero occurrences of "CumplAI"/"CumplIA" in `src/` — everything says
+      "ComplAI" (`grep -rn "CumplAI\|CumplIA" src/` returns nothing).
+- [ ] The active tab in the header nav (desktop and mobile) is clearly
+      distinguishable from the inactive ones when navigating between `/feed`
+      and `/settings` (and `/keys`).
+- [ ] `/keys` exists, protected by `src/proxy.ts`, lists the active
+      company's keys, allows generating one (admin only) showing the raw
+      key exactly once, and revoking one (admin only).
+- [ ] `api_keys` has RLS on and no access bypasses
+      `admin.ts`; the raw key is never persisted, only its hash.
+- [ ] Every new UI component comes from `src/components/ui/*`
+      (shadcn) — no hand-written HTML reinventing inputs/buttons/tables.
+- [ ] Visually verified in a real browser (Claude in Chrome, not
+      the sandboxed browser): `/settings` shows the asterisks,
+      the nav marks the active route, `/keys` generates and revokes a key with
+      no console errors. Also tested at ~390px width.
+- [ ] Nothing from "Explicitly out of scope" ended up implemented.
 
-Cuando TODOS los checks estén en verde, el reviewer lo confirma
-explícitamente en su reporte y el loop termina.
+Once ALL checks are green, the reviewer confirms it
+explicitly in its report and the loop ends.

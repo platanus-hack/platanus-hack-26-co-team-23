@@ -1,14 +1,14 @@
--- Rate limiting backed by Postgres (fixed window). Funciona across-instances en
--- Vercel serverless — un Map en memoria NO (cada invocación puede caer en otra
--- instancia). Correr en el SQL Editor (idempotente).
+-- Rate limiting backed by Postgres (fixed window). Works across instances on
+-- Vercel serverless — an in-memory Map does NOT (each invocation can land on a
+-- different instance). Run in the SQL Editor (idempotent).
 create table if not exists rate_limit_hits (
-  bucket text not null,           -- "key:<sha256>" o "ip:<ip>"
-  window_start bigint not null,   -- epoch (segundos) del inicio de la ventana
+  bucket text not null,           -- "key:<sha256>" or "ip:<ip>"
+  window_start bigint not null,   -- epoch (seconds) of the window's start
   count int not null default 0,
   primary key (bucket, window_start)
 );
 
--- Incrementa y devuelve el conteo de la ventana actual, atómico (un solo upsert).
+-- Increments and returns the current window's count, atomically (a single upsert).
 create or replace function check_rate_limit(p_bucket text, p_limit int, p_window int)
 returns int as $$
 declare
@@ -20,7 +20,7 @@ begin
   on conflict (bucket, window_start)
   do update set count = rate_limit_hits.count + 1
   returning count into v_count;
-  -- limpieza best-effort de ventanas viejas (barata: solo de este bucket)
+  -- best-effort cleanup of old windows (cheap: only this bucket)
   delete from rate_limit_hits where bucket = p_bucket and window_start < v_window;
   return v_count;
 end;

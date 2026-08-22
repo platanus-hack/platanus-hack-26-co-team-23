@@ -9,14 +9,14 @@ const atOrAbove = (min: string) => Object.keys(RANK).filter((s) => RANK[s] >= (R
 
 const clampLimit = (n: number | undefined, def = 10) => Math.min(Math.max(Number(n) || def, 1), 20)
 
-// ---- cambios_recientes: el feed de "qué cambió" (diferenciador vs Croma/buscadores) ----
+// ---- cambios_recientes: the "what changed" feed (differentiator vs Croma/search engines) ----
 export async function recentChanges(opts: {
   desde?: string; sector?: string; severidadMin?: string; limit?: number
 }) {
   const db = supabaseAdmin()
   let q = db.from('norms').select(NORM_FIELDS)
     .not('analyzed_at', 'is', null)
-    .in('severity', atOrAbove(opts.severidadMin ?? 'low')) // excluye 'info' (ruido)
+    .in('severity', atOrAbove(opts.severidadMin ?? 'low')) // excludes 'info' (noise)
     .order('published_at', { ascending: false })
     .limit(clampLimit(opts.limit))
   if (opts.desde) q = q.gte('published_at', opts.desde)
@@ -24,14 +24,14 @@ export async function recentChanges(opts: {
   return (await q).data ?? []
 }
 
-// ---- normas_que_me_aplican: matching contra perfil de empresa (inédito como tool MCP) ----
+// ---- normas_que_me_aplican: matching against a company profile (novel as an MCP tool) ----
 export async function normsForProfile(opts: {
   tipoEmpresa: string; sectores: string[]; severidadMin?: string; limit?: number
 }) {
   const db = supabaseAdmin()
   const limit = clampLimit(opts.limit)
-  // sector overlap + severidad en SQL; el filtro de tipo de empresa en JS (evita
-  // el quoting frágil de arrays con espacios como "persona natural" en PostgREST)
+  // sector overlap + severity in SQL; company-type filter in JS (avoids
+  // fragile quoting of arrays with spaces like "persona natural" in PostgREST)
   const { data } = await db.from('norms').select(NORM_FIELDS)
     .not('analyzed_at', 'is', null)
     .in('severity', atOrAbove(opts.severidadMin ?? 'low'))
@@ -43,7 +43,7 @@ export async function normsForProfile(opts: {
     .slice(0, limit)
 }
 
-// ---- obligaciones_con_deadline: calendario de cumplimiento (obligations estructuradas) ----
+// ---- obligaciones_con_deadline: compliance calendar (structured obligations) ----
 export async function obligationsWithDeadline(opts: {
   sector?: string; antesDe?: string; limit?: number
 }) {
@@ -68,35 +68,35 @@ export async function obligationsWithDeadline(opts: {
   return items.slice(0, clampLimit(opts.limit, 15))
 }
 
-// ---- plan_remediacion_codigo: de la norma al plan de cambios en el código (el diferenciador ACCESS) ----
+// ---- plan_remediacion_codigo: from norm to a concrete code-change plan (the ACCESS differentiator) ----
 export async function remediationPlan(opts: { norma: string; stack?: string }) {
   const db = supabaseAdmin()
-  // resolver por external_id exacto, si no por título/summary
+  // resolve by exact external_id, otherwise by title/summary
   const byId = await db.from('norms').select(NORM_FIELDS).eq('external_id', opts.norma).maybeSingle()
   const norm = byId.data ?? (await db.from('norms').select(NORM_FIELDS)
     .or(`title.ilike.%${opts.norma}%,summary.ilike.%${opts.norma}%`)
     .not('analyzed_at', 'is', null).limit(1).maybeSingle()).data
-  if (!norm) return { error: `No encontré una norma que coincida con "${opts.norma}".` }
+  if (!norm) return { error: `Could not find a norm matching "${opts.norma}".` }
 
-  // tool_use forzado: salida estructurada garantizada, robusta ante bloques de thinking
+  // forced tool_use: guaranteed structured output, robust against thinking blocks
   const msg = await anthropic.messages.create({
     model: MODEL,
     max_tokens: 2500,
     tools: [{
       name: 'registrar_plan',
-      description: 'Registra el plan de remediación de código para cumplir una norma',
+      description: 'Records the code remediation plan to comply with a norm',
       input_schema: {
         type: 'object',
         properties: {
-          resumen: { type: 'string', description: 'Qué exige la norma a nivel técnico (1-2 frases)' },
+          resumen: { type: 'string', description: 'What the norm requires at a technical level (1-2 sentences)' },
           cambios: {
             type: 'array',
             items: {
               type: 'object',
               properties: {
-                area: { type: 'string', description: 'Componente/archivo típico afectado' },
-                cambio: { type: 'string', description: 'Qué modificar' },
-                razon: { type: 'string', description: 'Qué obligación lo exige' },
+                area: { type: 'string', description: 'Typical affected component/file' },
+                cambio: { type: 'string', description: 'What to modify' },
+                razon: { type: 'string', description: 'Which obligation requires it' },
               },
               required: ['area', 'cambio', 'razon'],
             },
@@ -108,11 +108,11 @@ export async function remediationPlan(opts: { norma: string; stack?: string }) {
       },
     }],
     tool_choice: { type: 'tool', name: 'registrar_plan' },
-    system: 'Eres un ingeniero senior que traduce una norma colombiana en un plan concreto de cambios de código para cumplirla. Sé accionable. Si la norma no implica cambios de software, cambios=[] y explícalo en resumen.',
+    system: 'You are a senior engineer who translates a Colombian norm into a concrete code-change plan to comply with it. Be actionable. If the norm doesn\'t imply software changes, cambios=[] and explain why in resumen.',
     messages: [{
       role: 'user',
-      content: `NORMA: ${norm.title}\nRESUMEN: ${norm.summary}\nOBLIGACIONES: ${JSON.stringify(norm.obligations)}` +
-        (opts.stack ? `\n\nSTACK DEL CLIENTE: ${opts.stack}` : ''),
+      content: `NORM: ${norm.title}\nSUMMARY: ${norm.summary}\nOBLIGATIONS: ${JSON.stringify(norm.obligations)}` +
+        (opts.stack ? `\n\nCLIENT STACK: ${opts.stack}` : ''),
     }],
   })
   const block = msg.content.find((b) => b.type === 'tool_use')

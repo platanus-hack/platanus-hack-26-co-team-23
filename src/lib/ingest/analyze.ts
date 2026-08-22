@@ -14,22 +14,22 @@ export type NormAnalysis = z.infer<typeof AnalysisSchema>
 export function parseAnalysis(text: string): NormAnalysis {
   const start = text.indexOf('{')
   const end = text.lastIndexOf('}')
-  if (start === -1 || end === -1) throw new Error('sin JSON en la respuesta')
+  if (start === -1 || end === -1) throw new Error('no JSON in the response')
   return AnalysisSchema.parse(JSON.parse(text.slice(start, end + 1)))
 }
 
-const SYSTEM = `Eres un analista regulatorio colombiano. Analiza la norma y registra el resultado
-con la herramienta. Sé conservador: si la norma no afecta empresas, sectors=[] y severity=info.
-severity=high solo si crea obligaciones con sanción.`
+const SYSTEM = `You are a Colombian regulatory analyst. Analyze the norm and record the result
+with the tool. Be conservative: if the norm doesn't affect companies, sectors=[] and severity=info.
+severity=high only if it creates obligations with a penalty.`
 
-// Tool use forzado: el modelo solo puede responder con el JSON del schema — cero parsing frágil.
+// Forced tool use: the model can only respond with the schema's JSON — zero fragile parsing.
 const ANALYSIS_TOOL = {
   name: 'registrar_analisis',
-  description: 'Registra el análisis estructurado de una norma colombiana',
+  description: 'Records the structured analysis of a Colombian norm',
   input_schema: {
     type: 'object' as const,
     properties: {
-      summary: { type: 'string', description: 'Resumen en 1-2 frases: qué cambia y a quién obliga' },
+      summary: { type: 'string', description: '1-2 sentence summary: what changes and who it obligates' },
       sectors: { type: 'array', items: { type: 'string', enum: [...SECTORS] } },
       company_types: { type: 'array', items: { type: 'string', enum: ['SAS', 'SA', 'LTDA', 'persona natural'] } },
       obligations: {
@@ -37,8 +37,8 @@ const ANALYSIS_TOOL = {
         items: {
           type: 'object',
           properties: {
-            action: { type: 'string', description: 'Obligación concreta' },
-            deadline: { type: ['string', 'null'], description: 'YYYY-MM-DD o null' },
+            action: { type: 'string', description: 'Concrete obligation' },
+            deadline: { type: ['string', 'null'], description: 'YYYY-MM-DD or null' },
           },
           required: ['action', 'deadline'],
         },
@@ -56,9 +56,9 @@ export async function analyzeNorm(title: string, rawText: string): Promise<NormA
     system: SYSTEM,
     tools: [ANALYSIS_TOOL],
     tool_choice: { type: 'tool', name: 'registrar_analisis' },
-    messages: [{ role: 'user', content: `TÍTULO: ${title}\n\nTEXTO:\n${rawText.slice(0, 30000)}` }],
+    messages: [{ role: 'user', content: `TITLE: ${title}\n\nTEXT:\n${rawText.slice(0, 30000)}` }],
   })
   const block = msg.content.find((b) => b.type === 'tool_use')
-  if (!block || block.type !== 'tool_use') throw new Error('sin tool_use en la respuesta')
+  if (!block || block.type !== 'tool_use') throw new Error('no tool_use in the response')
   return AnalysisSchema.parse(block.input)
 }

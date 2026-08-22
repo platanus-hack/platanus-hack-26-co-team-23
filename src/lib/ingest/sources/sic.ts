@@ -4,17 +4,17 @@ import type { SourceAdapter, SourceNorm } from '../types'
 import { stripHtml, parseSpanishDate, BROWSER_HEADERS } from '../scrape'
 
 const BASE = 'https://www.sic.gov.co'
-// mapeo verificado del repositorio Drupal: cada value devuelve una tabla de 10 ítems
+// verified mapping of the Drupal repository: each value returns a table of 10 items
 const LISTINGS = [
   { url: `${BASE}/repositorio-de-normatividad?field_tipo_de_norma_value=3`, norm_type: 'resolucion' },
   { url: `${BASE}/repositorio-de-normatividad?field_tipo_de_norma_value=5`, norm_type: 'circular' },
 ]
 
-// sic.gov.co sirve una cadena TLS incompleta: no envía su intermedio. La verificación
-// se mantiene COMPLETA — solo agregamos el intermedio oficial de GlobalSign
-// (bajado del AIA del propio cert del sitio: secure.globalsign.com/cacert/gsrsaovsslca2018.crt,
-// emitido por GlobalSign Root CA R3, que está en el trust store de Node; expira 2028-11).
-// Copia en repo: src/lib/ingest/certs/globalsign-rsa-ov-2018.pem
+// sic.gov.co serves an incomplete TLS chain: it doesn't send its intermediate. Verification
+// stays FULL — we just add the official GlobalSign intermediate
+// (downloaded from the site's own cert's AIA: secure.globalsign.com/cacert/gsrsaovsslca2018.crt,
+// issued by GlobalSign Root CA R3, which is in Node's trust store; expires 2028-11).
+// Copy in the repo: src/lib/ingest/certs/globalsign-rsa-ov-2018.pem
 const GLOBALSIGN_RSA_OV_2018 = `-----BEGIN CERTIFICATE-----
 MIIETjCCAzagAwIBAgINAe5fIh38YjvUMzqFVzANBgkqhkiG9w0BAQsFADBMMSAw
 HgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSMzETMBEGA1UEChMKR2xvYmFs
@@ -42,7 +42,7 @@ hriSqHKvoflShx8xpfywgVcvzfTO3PYkz6fiNJBonf6q8amaEsybwMbDqKWwIX7e
 SPY=
 -----END CERTIFICATE-----`
 
-// trust store por defecto + el intermedio que el sitio omite
+// default trust store + the intermediate the site omits
 const sicAgent = new Agent({
   connect: { ca: [...tls.rootCertificates, GLOBALSIGN_RSA_OV_2018] },
 })
@@ -53,24 +53,24 @@ const slug = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60)
 
-// Filas de la tabla del repositorio: [tipo, tema, nombre, descripción, fecha, ..., link PDF]
+// Repository table rows: [type, topic, name, description, date, ..., PDF link]
 export function parseSicRows(html: string, norm_type: string, limit: number): SourceNorm[] {
   const norms: SourceNorm[] = []
   for (const [, row] of html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
     const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(([, c]) => stripHtml(c))
     if (cells.length < 5 || !cells[2]) continue
-    const [, tema, nombre, descripcion, fecha] = cells
+    const [, topic, name, description, date] = cells
     const pdf = row.match(/href="(https?:\/\/[^"]+\.pdf[^"]*)"/i)?.[1] ?? null
     norms.push({
-      external_id: `sic-${slug(nombre)}`,
+      external_id: `sic-${slug(name)}`,
       source: 'sic',
-      title: `${nombre} (SIC)${descripcion ? ` — ${descripcion.slice(0, 90)}` : ''}`,
+      title: `${name} (SIC)${description ? ` — ${description.slice(0, 90)}` : ''}`,
       issuer: 'SIC',
       norm_type,
-      published_at: parseSpanishDate(fecha ?? ''),
+      published_at: parseSpanishDate(date ?? ''),
       url: pdf,
-      // metadata del listado; el texto completo vive en el PDF (stretch post-hackathon)
-      raw_text: `${nombre} — SIC. Tema: ${tema}. ${descripcion}. Fecha: ${fecha}.`,
+      // listing metadata; the full text lives in the PDF (post-hackathon stretch)
+      raw_text: `${name} — SIC. Tema: ${topic}. ${description}. Fecha: ${date}.`,
     })
     if (norms.length >= limit) break
   }

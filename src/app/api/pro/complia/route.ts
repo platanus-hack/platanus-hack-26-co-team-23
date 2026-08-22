@@ -6,18 +6,18 @@ import { octokitFor } from '@/lib/pro/octokit'
 
 export const maxDuration = 120
 
-// lazy: companyId llega del cliente. Cuando exista auth (Task 3), sacarlo de la sesión.
-// Lo que NO puede volver a pasar: aceptar repo/installationId sueltos del body — eso
-// dejaba leer el código de cualquier instalación cuyo id se adivinara.
+// lazy: companyId comes from the client. Once auth exists (Task 3), pull it from the session.
+// What must NEVER happen again: accepting a loose repo/installationId from the body — that
+// let anyone read the code of any installation whose id they guessed.
 
 /**
- * POST { companyId, repo? } → { markdown } — el COMPLIA.md propuesto.
- * El repo y la credencial salen de la empresa, no del request. `repo` es opcional y
- * solo se acepta si la instalación de esa empresa realmente lo alcanza.
+ * POST { companyId, repo? } → { markdown } — the proposed COMPLIA.md.
+ * The repo and credential come from the company, not the request. `repo` is optional and
+ * only accepted if that company's installation actually reaches it.
  */
 export async function POST(req: NextRequest) {
-  const { companyId, repo: pedido } = await req.json()
-  if (!companyId) return NextResponse.json({ error: 'falta companyId' }, { status: 400 })
+  const { companyId, repo: requested } = await req.json()
+  if (!companyId) return NextResponse.json({ error: 'missing companyId' }, { status: 400 })
 
   const db = supabaseAdmin()
   const { data: company } = await db
@@ -25,19 +25,19 @@ export async function POST(req: NextRequest) {
     .select('github_repo, github_installation_id')
     .eq('id', companyId)
     .single()
-  if (!company) return NextResponse.json({ error: 'empresa no encontrada' }, { status: 404 })
+  if (!company) return NextResponse.json({ error: 'company not found' }, { status: 404 })
 
   try {
     const gh = await octokitFor(company.github_installation_id)
 
     let full = company.github_repo
-    if (pedido && pedido !== company.github_repo) {
+    if (requested && requested !== company.github_repo) {
       const { data } = await gh.rest.apps.listReposAccessibleToInstallation()
-      if (!data.repositories.some((r) => r.full_name === pedido))
-        return NextResponse.json({ error: `la empresa no tiene acceso a ${pedido}` }, { status: 403 })
-      full = pedido
+      if (!data.repositories.some((r) => r.full_name === requested))
+        return NextResponse.json({ error: `company does not have access to ${requested}` }, { status: 403 })
+      full = requested
     }
-    if (!full) return NextResponse.json({ error: 'la empresa no tiene repo configurado' }, { status: 400 })
+    if (!full) return NextResponse.json({ error: 'company has no repo configured' }, { status: 400 })
 
     const [owner, repo] = full.split('/')
     const paths = (await listRepoPaths(gh, owner, repo))
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     )
     return NextResponse.json({ repo: full, markdown: await generateCompliaMd(full, files) })
   } catch (e) {
-    console.error('generateCompliaMd falló:', e)
+    console.error('generateCompliaMd failed:', e)
     return NextResponse.json({ error: (e as Error).message }, { status: 502 })
   }
 }

@@ -1,14 +1,14 @@
--- Datos de demo del tier PRO: empresa conectada al repo facturador-demo + una alerta
--- sobre la que disparar el PR de cumplimiento.
+-- PRO tier demo data: a company connected to the facturador-demo repo + an alert
+-- to trigger the compliance PR against.
 --
--- Prerequisito: al menos un usuario en auth.users.
--- Si no hay ninguno, créalo en el dashboard: Authentication → Users → Add user
--- (email + password, marcando "Auto Confirm User").
+-- Prerequisite: at least one user in auth.users.
+-- If there isn't one, create it in the dashboard: Authentication → Users → Add user
+-- (email + password, checking "Auto Confirm User").
 
--- 1. Columna de la GitHub App (idempotente).
+-- 1. GitHub App column (idempotent).
 alter table companies add column if not exists github_installation_id bigint;
 
--- 2. Empresa de demo + alerta, en una sola corrida.
+-- 2. Demo company + alert, in a single run.
 with u as (
   select id from auth.users order by created_at limit 1
 ), c as (
@@ -23,8 +23,8 @@ with u as (
     array['tecnologia', 'tributario-general'],
     '[]'::jsonb,
     'ComplAI-Crew/facturador-demo',
-    'alejocas17',              -- ⚠️ cualquiera MENOS el dueño del token: GitHub no deja auto-asignarse revisión
-    155641303                  -- installation_id de la GitHub App en ComplAI-Crew
+    'alejocas17',              -- ⚠️ anyone EXCEPT the token owner: GitHub won't let you self-assign a review
+    155641303                  -- installation_id of the GitHub App on ComplAI-Crew
   from u
   returning id
 )
