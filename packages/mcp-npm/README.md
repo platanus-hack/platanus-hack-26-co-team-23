@@ -1,17 +1,17 @@
 # complai-mcp
 
-Normativa colombiana estructurada para agentes de IA — resoluciones DIAN, circulares de la
-Superfinanciera, normativa SIC y el inventario SUIN-Juriscol, analizadas y clasificadas por
+Colombian regulation structured for AI agents — DIAN resolutions, Superfinanciera
+circulars, SIC regulations, and the SUIN-Juriscol inventory, analyzed and classified by
 [complAI](https://complai-co.vercel.app).
 
-## Uso
+## Usage
 
-Necesitas una API key — genérala gratis en [complai-co.vercel.app/keys](https://complai-co.vercel.app/keys).
+You need an API key — generate one for free at [complai-co.vercel.app/keys](https://complai-co.vercel.app/keys).
 
 **Claude Code:**
 
 ```bash
-claude mcp add complai --env COMPLAI_API_KEY=cai_tu_key -- npx -y complai-mcp
+claude mcp add complai --env COMPLAI_API_KEY=cai_your_key -- npx -y complai-mcp
 ```
 
 **Claude Desktop** (`claude_desktop_config.json`):
@@ -19,38 +19,38 @@ claude mcp add complai --env COMPLAI_API_KEY=cai_tu_key -- npx -y complai-mcp
 ```json
 { "mcpServers": { "complai": {
   "command": "npx", "args": ["-y", "complai-mcp"],
-  "env": { "COMPLAI_API_KEY": "cai_tu_key" }
+  "env": { "COMPLAI_API_KEY": "cai_your_key" }
 } } }
 ```
 
 ## Tools
 
-**Consulta**
-- `buscar_normas(query, limit?)` — búsqueda por texto libre en título/resumen.
-- `normas_por_sector(sector, limit?)` — normativa reciente que afecta a un sector.
+**Query**
+- `buscar_normas(query, limit?)` — free-text search over title/summary.
+- `normas_por_sector(sector, limit?)` — recent regulation affecting a sector.
 
-**Diferenciadores** (lo que un buscador jurídico no hace)
-- `cambios_recientes(desde?, sector?, severidad_min?, limit?)` — el feed de "¿qué cambió
-  esta semana?".
-- `normas_que_me_aplican(tipo_empresa, sectores[], severidad_min?, limit?)` — matching real
-  contra el perfil de una empresa, no búsqueda por tema.
-- `obligaciones_con_deadline(sector?, antes_de?, limit?)` — calendario de cumplimiento:
-  obligaciones concretas con fecha límite, ordenadas por deadline.
-- `plan_remediacion_codigo(norma, stack?)` — de la norma al código: plan concreto de qué
-  componentes tocar para cumplir, con verificación.
+**Differentiators** (what a legal search engine doesn't do)
+- `cambios_recientes(desde?, sector?, severidad_min?, limit?)` — the "what changed
+  this week?" feed.
+- `normas_que_me_aplican(tipo_empresa, sectores[], severidad_min?, limit?)` — real
+  matching against a company's profile, not topic search.
+- `obligaciones_con_deadline(sector?, antes_de?, limit?)` — compliance calendar:
+  concrete obligations with a deadline, ordered by due date.
+- `plan_remediacion_codigo(norma, stack?)` — from norm to code: a concrete plan of which
+  components to touch to comply, with verification.
 
-Sectores válidos: `fintech, salud, alimentos, transporte, construccion, comercio,
+Valid sectors: `fintech, salud, alimentos, transporte, construccion, comercio,
 tecnologia, datos-personales, laboral-general, tributario-general`.
-Tipos de empresa: `SAS, SA, LTDA, persona natural`.
+Company types: `SAS, SA, LTDA, persona natural`.
 
-Cada norma incluye: id, título, emisor, tipo, fecha, resumen, obligaciones (con deadline),
-severidad y link a la fuente oficial.
+Each norm includes: id, title, issuer, type, date, summary, obligations (with deadline),
+severity, and a link to the official source.
 
 ## Config
 
-- `COMPLAI_API_KEY` — tu API key (requerida; se genera en el dashboard).
-- `COMPLAI_API_URL` — override del backend (default: producción de complAI).
+- `COMPLAI_API_KEY` — your API key (required; generated in the dashboard).
+- `COMPLAI_API_URL` — backend override (default: complAI production).
 
 ---
 
-Hecho en Platanus Hack 26 · Bogotá — team ComplAI-Crew.
+Built at Platanus Hack 26 · Bogotá — team ComplAI-Crew.

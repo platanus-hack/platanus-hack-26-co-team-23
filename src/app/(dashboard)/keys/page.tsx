@@ -27,7 +27,7 @@ type ApiKey = {
 async function getApiKeys(orgId: string) {
   const supabase = supabaseAdmin();
 
-  // Encontrar la empresa por clerk_org_id
+  // Find the company by clerk_org_id
   const { data: company, error: companyError } = await supabase
     .from("companies")
     .select("id")
@@ -38,7 +38,7 @@ async function getApiKeys(orgId: string) {
     return { error: "No se encontró información de tu empresa" };
   }
 
-  // Listar las API keys de la empresa
+  // List the company's API keys
   const { data: keys, error: keysError } = await supabase
     .from("api_keys")
     .select("id, name, key_prefix, created_at, last_used_at, revoked_at")

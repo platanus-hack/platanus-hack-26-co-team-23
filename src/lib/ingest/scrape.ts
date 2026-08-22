@@ -1,4 +1,4 @@
-// Helpers compartidos de scraping para fuentes HTML (DIAN, SFC, SIC)
+// Shared scraping helpers for HTML sources (DIAN, SFC, SIC)
 
 const ENTITIES: Record<string, string> = {
   aacute: 'á', eacute: 'é', iacute: 'í', oacute: 'ó', uacute: 'ú', ntilde: 'ñ', uuml: 'ü',
@@ -25,7 +25,7 @@ export function stripHtml(html: string): string {
 
 export const BROWSER_HEADERS = { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' }
 
-// fechas tipo "Sep 29, 2023" / "Dic 7, 2018" (abreviaturas ES) → ISO
+// dates like "Sep 29, 2023" / "Dic 7, 2018" (ES abbreviations) → ISO
 const MONTHS: Record<string, string> = {
   ene: '01', feb: '02', mar: '03', abr: '04', may: '05', jun: '06',
   jul: '07', ago: '08', sep: '09', oct: '10', nov: '11', dic: '12',

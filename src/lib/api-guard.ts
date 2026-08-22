@@ -1,8 +1,8 @@
 import { validateApiKey, unauthorized } from '@/lib/api-keys'
 import { rateLimit, tooManyRequests } from '@/lib/rate-limit'
 
-// Guard compartido para las superficies públicas: rate limit (antes de auth, para
-// frenar brute-force de keys) + validación de API key. Un solo lugar que mantener.
+// Shared guard for public surfaces: rate limit (before auth, to stop
+// key brute-forcing) + API key validation. A single place to maintain.
 export function withApiGuard(fn: (req: Request) => Promise<Response>) {
   return async (req: Request): Promise<Response> => {
     const rl = await rateLimit(req)
