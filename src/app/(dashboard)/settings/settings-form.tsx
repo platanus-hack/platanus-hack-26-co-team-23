@@ -294,7 +294,7 @@ function ReadOnlyView({ company }: { company: Company | null }) {
       <Card>
         <CardContent className="pt-6">
           <p className="text-muted-foreground">
-            Tu organización aún no ha configurado CumplIA.
+            Tu organización aún no ha configurado CumplAI.
           </p>
         </CardContent>
       </Card>

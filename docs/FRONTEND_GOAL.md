@@ -1,4 +1,4 @@
-# Meta del frontend de CumplIA (rama `feat/frontend-dashboard`)
+# Meta del frontend de CumplAI (rama `feat/frontend-dashboard`)
 
 > Contexto para los subagentes `frontend-developer` y `frontend-reviewer`.
 > Este documento es el criterio de "terminado" — el loop developer↔reviewer
@@ -31,13 +31,13 @@ tabs, cards, badges, menús...). Cero HTML+CSS a mano para algo que shadcn
 ya resuelve, cero otra librería de componentes.
 
 1. **`src/app/(dashboard)/layout.tsx`** — shell del dashboard: barra
-   superior con logo "CumplIA", nav (`Alertas` → `/feed`, `Configuración`
+   superior con logo "CumplAI", nav (`Alertas` → `/feed`, `Configuración`
    → `/settings`), `<OrganizationSwitcher/>` y `<UserButton/>` de Clerk,
    badge de rol (admin/miembro, vía `auth().orgRole`). Responsive: en
    móvil el nav colapsa a un menú (usa el `Sheet` o `DropdownMenu` de
    shadcn — añádelo si no está).
 
-2. **`src/app/login/page.tsx`** — página de login con `<SignIn/>` de
+2. **`src/app/sign-in/[[...sign-in]]/page.tsx (+ sign-up equivalente)`** — página de login con `<SignIn/>` de
    Clerk, envuelta en un `Card` de shadcn. Sin diseño de marca elaborado:
    texto simple + el componente de Clerk basta.
 
@@ -75,7 +75,7 @@ ya resuelve, cero otra librería de componentes.
 
 5. **`src/app/page.tsx`** — reemplaza el scaffold de create-next-app.
    Algo simple: si hay sesión activa redirige a `/feed`, si no a
-   `/login`. No hace falta una landing de marketing — no es el foco.
+   `/sign-in`. No hace falta una landing de marketing — no es el foco.
 
 ## Explícitamente FUERA de alcance (no lo construyas)
 
@@ -101,8 +101,8 @@ ya resuelve, cero otra librería de componentes.
       existe config de Prettier antes de asumir que hay que correrlo**
       (al momento de escribir esto NO hay `.prettierrc` ni dependencia
       `prettier` en el repo; si sigue así, no inventes esa gate).
-- [ ] `pnpm dev` levanta y las rutas `/login`, `/settings`, `/feed`
-      responden (protegidas por Clerk: sin sesión redirigen a `/login`).
+- [ ] `pnpm dev` levanta y las rutas `/sign-in`, `/settings`, `/feed`
+      responden (protegidas por Clerk: sin sesión redirigen a `/sign-in`).
 - [ ] Cada componente de UI usado viene de `src/components/ui/*`
       (shadcn) — sin excepciones sin justificar.
 - [ ] El formulario de `/settings` cubre los 3 bloques (perfil, canales,

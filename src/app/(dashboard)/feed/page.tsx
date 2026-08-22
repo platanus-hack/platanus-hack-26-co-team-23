@@ -13,7 +13,7 @@ export default async function FeedPage() {
   const { sessionClaims } = await auth();
 
   if (!sessionClaims) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   const orgId = sessionClaims.org_id as string;
@@ -62,7 +62,7 @@ export default async function FeedPage() {
         <Card>
           <CardContent className="pt-6 text-center">
             <p className="text-muted-foreground mb-4">
-              Tu organización aún no ha configurado CumplIA. Completa tu configuración de empresa para empezar a recibir alertas.
+              Tu organización aún no ha configurado CumplAI. Completa tu configuración de empresa para empezar a recibir alertas.
             </p>
             <Link href="/settings">
               <Button>Ir a Configuración</Button>

@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Material fetched by `skills add` (Clerk skill docs/templates) — reference
+    // content for agents, not project source.
+    ".agents/**",
   ]),
 ]);
 

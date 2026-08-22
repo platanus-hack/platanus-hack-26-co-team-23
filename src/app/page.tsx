@@ -7,6 +7,6 @@ export default async function Home() {
   if (sessionClaims) {
     redirect("/feed");
   } else {
-    redirect("/login");
+    redirect("/sign-in");
   }
 }

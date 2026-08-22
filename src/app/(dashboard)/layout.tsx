@@ -19,7 +19,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const { sessionClaims, orgRole } = await auth();
 
   if (!sessionClaims) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   // Determine role display
@@ -41,7 +41,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
           {/* Logo */}
           <div className="flex items-center gap-3">
             <Link href="/feed" className="font-bold text-lg">
-              CumplIA
+              CumplAI
             </Link>
           </div>
 
@@ -75,11 +75,12 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 
             {/* Mobile Menu */}
             <Sheet>
-              <SheetTrigger className="md:hidden">
-                <Button variant="ghost" size="icon">
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">Abrir menú</span>
-                </Button>
+              <SheetTrigger
+                className="md:hidden"
+                render={<Button variant="ghost" size="icon" />}
+              >
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Abrir menú</span>
               </SheetTrigger>
               <SheetContent side="left" className="w-64">
                 <nav className="flex flex-col gap-4 mt-8">
