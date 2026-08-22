@@ -1,3 +1,5 @@
+import { signLink } from '@/lib/api-auth'
+
 /**
  * Public base URL of the app, for links that travel outside the browser
  * (a WhatsApp message, an email, the PDF guide in a Slack post).
@@ -12,5 +14,7 @@ export function appUrl(): string {
   return vercel ? `https://${vercel}` : 'http://localhost:3000'
 }
 
-/** Public link to an alert's PDF guide. */
-export const guideUrl = (alertId: string) => `${appUrl()}/api/alerts/${alertId}/guia`
+/** Public link to an alert's PDF guide. Signed: it travels in a WhatsApp message
+ *  and an email, so it can't require a login — nor be guessable. */
+export const guideUrl = (alertId: string) =>
+  `${appUrl()}/api/alerts/${alertId}/guia?sig=${signLink('guia', alertId)}`
