@@ -11,6 +11,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -45,6 +54,10 @@ export function GithubConnect({ companyId, children }: Props) {
   const [saving, setSaving] = useState(false);
   const [markdown, setMarkdown] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  // Al terminar de generar se abre el diálogo: ahí se decide si además se abre el PR.
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [wantPr, setWantPr] = useState(true);
+  const [creatingPr, setCreatingPr] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -117,10 +130,38 @@ export function GithubConnect({ companyId, children }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo generar COMPLIA.md");
       setMarkdown(data.markdown);
+      setReviewOpen(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al generar COMPLIA.md");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  /** Cierra el diálogo. Si se pidió el PR, lo abre antes; si no, el markdown queda
+   *  abajo para copiarlo a mano. */
+  const handleConfirmComplia = async () => {
+    if (!wantPr || !markdown) {
+      setReviewOpen(false);
+      return;
+    }
+    setCreatingPr(true);
+    try {
+      const res = await fetch("/api/pro/complia/pr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, markdown }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo abrir el PR");
+      setReviewOpen(false);
+      toast.success("PR abierto en draft", {
+        action: { label: "Ver PR", onClick: () => window.open(data.prUrl, "_blank") },
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al abrir el PR");
+    } finally {
+      setCreatingPr(false);
     }
   };
 
@@ -231,6 +272,49 @@ export function GithubConnect({ companyId, children }: Props) {
             </p>
           </div>
         )}
+
+        <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>COMPLIA.md propuesto</DialogTitle>
+              <DialogDescription>
+                Este archivo le dice al agente qué partes de tu repositorio importan cuando
+                cambia la normativa. Revísalo antes de continuar.
+              </DialogDescription>
+            </DialogHeader>
+
+            <pre className="max-h-72 overflow-auto rounded-md border bg-muted p-3 text-xs whitespace-pre-wrap">
+              {markdown}
+            </pre>
+
+            <div className="flex items-start gap-3 rounded-md border p-3">
+              <Checkbox
+                id="want-pr"
+                checked={wantPr}
+                onCheckedChange={(checked) => setWantPr(checked === true)}
+              />
+              <div className="space-y-1">
+                <Label htmlFor="want-pr" className="font-medium">
+                  Abrir un PR con este archivo
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {state && state.connected && state.selected
+                    ? `Se abre en draft sobre ${state.selected}, con el revisor asignado. Si lo dejas sin marcar, el contenido queda abajo para copiarlo a mano.`
+                    : "Necesitas un repositorio conectado para abrir el PR."}
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setReviewOpen(false)} disabled={creatingPr}>
+                Cancelar
+              </Button>
+              <Button onClick={handleConfirmComplia} disabled={creatingPr}>
+                {creatingPr ? "Abriendo PR…" : wantPr ? "Abrir PR" : "Listo"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
