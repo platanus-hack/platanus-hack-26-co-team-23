@@ -54,6 +54,17 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/c
 curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/match
 ```
 
+## Skills de agente (setup local, una vez por máquina)
+
+Clerk y Supabase publican skills para Claude Code con guías específicas de su API/CLI.
+Se instalan globales (`~/.claude/skills`, fuera del repo) — cada quien las corre una vez
+en su máquina y quedan disponibles en cualquier proyecto o worktree, sin tocar el repo:
+
+```bash
+npx skills add clerk/skills
+npx skills add supabase/agent-skills
+```
+
 ## Pendientes de setup manual (hacer temprano, dependen de terceros)
 
 - [ ] Proyecto Supabase + Google OAuth (Task 0 Step 2)
