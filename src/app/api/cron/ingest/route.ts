@@ -5,7 +5,9 @@ import { analyzeNorm } from '@/lib/ingest/analyze'
 
 export const maxDuration = 300
 
-export async function POST(req: NextRequest) {
+// POST for manual curl; GET for Vercel Cron (invokes via GET with the
+// Authorization: Bearer $CRON_SECRET header when CRON_SECRET is set).
+async function handle(req: NextRequest) {
   if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`)
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
@@ -25,3 +27,5 @@ export async function POST(req: NextRequest) {
   }
   return NextResponse.json({ inserted, analyzed })
 }
+
+export { handle as GET, handle as POST }
