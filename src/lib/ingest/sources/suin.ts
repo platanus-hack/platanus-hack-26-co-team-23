@@ -38,8 +38,13 @@ export const suin: SourceAdapter = {
   async fetch(limit = 25) {
     // Solo años recientes y vigentes; a_o es texto con basura histórica — jamás ordenar por a_o global
     const where = encodeURIComponent(`a_o in ('2025','2026') AND vigencia='Vigente'`)
+    // Ordenar por año DESC para que el año corriente entre primero: hay >1.000 normas vigentes
+    // por año y el $limit cortaba en un tramo arbitrario, así que 2026 nunca aparecía.
+    // Es seguro pese al aviso de arriba porque el $where ya restringe a 2025/2026 (comparar
+    // '2026' > '2025' como texto da el orden correcto); sin el filtro sí traería basura tipo "996".
+    const order = encodeURIComponent('a_o DESC')
     const res = await fetch(
-      `https://www.datos.gov.co/resource/fiev-nid6.json?$limit=${limit}&$where=${where}`,
+      `https://www.datos.gov.co/resource/fiev-nid6.json?$limit=${limit}&$where=${where}&$order=${order}`,
       { headers: { Accept: 'application/json' } },
     )
     if (!res.ok) throw new Error(`SODA ${res.status}`)
