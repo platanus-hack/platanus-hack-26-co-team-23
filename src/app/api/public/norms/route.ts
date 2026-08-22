@@ -1,22 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { validateApiKey, unauthorized } from '@/lib/api-keys'
-import { rateLimit, tooManyRequests } from '@/lib/rate-limit'
+import { withApiGuard } from '@/lib/api-guard'
+import { NORM_FIELDS } from '@/lib/norms-queries'
 
-// API read-only con API key: la superficie que consume el paquete npm complai-mcp.
-// Solo normas ya analizadas; el control de acceso es por key generada en /keys.
-export async function GET(req: NextRequest) {
-  const rl = await rateLimit(req)
-  if (!rl.ok) return tooManyRequests(rl.retryAfter)
-  if (!(await validateApiKey(req))) return unauthorized()
+// API read-only con API key: superficie que consume el paquete npm complai-mcp.
+export const GET = withApiGuard(async (req) => {
   const { searchParams } = new URL(req.url)
   const sector = searchParams.get('sector')
   const q = searchParams.get('q')
   const limit = Math.min(Number(searchParams.get('limit') ?? 10), 20)
 
-  const db = supabaseAdmin()
-  let query = db.from('norms')
-    .select('title, issuer, norm_type, published_at, summary, sectors, obligations, severity, url')
+  let query = supabaseAdmin().from('norms').select(NORM_FIELDS)
     .not('analyzed_at', 'is', null)
     .order('published_at', { ascending: false })
     .limit(limit)
@@ -26,4 +20,4 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query
   if (error) return NextResponse.json({ error: 'query failed' }, { status: 500 })
   return NextResponse.json(data)
-}
+})
