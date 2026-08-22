@@ -30,6 +30,7 @@ export type Company = {
   id: string; owner_user_id: string; name: string; company_type: string
   sectors: string[]; channels: ChannelConfig[]
   github_repo: string | null; reviewer_github: string | null
+  github_installation_id: number | null   // instalación de la GitHub App; null = fallback a GITHUB_TOKEN
 }
 
 export type Alert = {

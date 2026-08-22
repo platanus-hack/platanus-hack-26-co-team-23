@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Octokit } from 'octokit'
 import { generateCompliaMd } from '@/lib/pro/complia-md'
 import { listRepoPaths } from '@/lib/pro/github'
+import { octokitFor } from '@/lib/pro/octokit'
 
 export const maxDuration = 120
 
-/** POST { repo: "owner/nombre" } → { markdown } — el COMPLIA.md propuesto para ese repo. */
+/** POST { repo: "owner/nombre", installationId? } → { markdown } — el COMPLIA.md propuesto. */
 export async function POST(req: NextRequest) {
-  const { repo: full } = await req.json()
+  const { repo: full, installationId } = await req.json()
   const [owner, repo] = String(full ?? '').split('/')
   if (!owner || !repo) return NextResponse.json({ error: 'repo inválido (owner/nombre)' }, { status: 400 })
 
   try {
-    const gh = new Octokit({ auth: process.env.GITHUB_TOKEN })
+    const gh = await octokitFor(installationId ?? null)
     const paths = (await listRepoPaths(gh, owner, repo))
       .filter((p) => /\.(ts|tsx|js|json|md)$/.test(p))
       .slice(0, 25)
