@@ -2,7 +2,9 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { ChannelConfig, COMPANY_TYPES, SECTORS, CHANNEL_TYPES } from "@/lib/types";
+import { revalidatePath } from "next/cache";
+import { ChannelConfig, COMPANY_TYPES, SECTORS, CHANNEL_TYPES, ChannelType } from "@/lib/types";
+import { CHANNEL_FIELD, normalizePhone, validateChannelValue } from "@/lib/channel-config";
 
 type SettingsFormData = {
   name: string;
@@ -41,13 +43,26 @@ export async function updateCompanySettings(data: SettingsFormData) {
     // Validate sectors
     const validSectors = data.sectors.filter((s) => SECTORS.includes(s as typeof SECTORS[number]));
 
-    // Build channels array
-    const channels: ChannelConfig[] = data.channels
-      .filter((ch) => ch.enabled && ch.config && Object.values(ch.config).some((v) => v))
+    // Build channels array. An enabled channel with an empty or malformed value used
+    // to be dropped silently here: the user saw "saved" and the alert never arrived.
+    // Now it's a validation error.
+    const enabled = data.channels.filter((ch) => ch.enabled)
+    for (const ch of enabled) {
+      if (!CHANNEL_TYPES.includes(ch.type as ChannelType))
+        return { error: `Canal desconocido: ${ch.type}` };
+      const field = CHANNEL_FIELD[ch.type as ChannelType];
+      const problem = validateChannelValue(ch.type as ChannelType, ch.config?.[field] ?? "");
+      if (problem) return { error: problem };
+    }
+
+    const channels: ChannelConfig[] = enabled
       .map((ch) => {
+        const field = CHANNEL_FIELD[ch.type as ChannelType];
+        const raw = ch.config[field].trim();
         const channelConfig: ChannelConfig = {
           type: ch.type as typeof CHANNEL_TYPES[number],
-          config: ch.config,
+          // Store only the field the adapter reads, normalized.
+          config: { [field]: field === "phone" ? normalizePhone(raw) : raw },
         };
 
         // Set min_severity, but force 'high' for voice
@@ -85,6 +100,8 @@ export async function updateCompanySettings(data: SettingsFormData) {
       return { error: "Error al guardar la configuración" };
     }
 
+    // So the GitHub block appears right after the first save without a manual reload.
+    revalidatePath("/settings");
     return { success: true, data: company };
   } catch (error) {
     console.error("Error in updateCompanySettings:", error);
