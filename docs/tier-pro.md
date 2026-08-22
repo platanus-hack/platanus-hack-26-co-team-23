@@ -109,6 +109,9 @@ Env necesarias: `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_SLUG`,
 
 ## Pendiente
 
+> Handoff detallado para M2/M3, con contratos de API y estados de UI:
+> [`tier-pro-dashboard.md`](./tier-pro-dashboard.md)
+
 ### 1. Montar el botón en el feed — bloqueado por M3 (Task 6)
 
 Cuando exista `src/app/(dashboard)/feed/page.tsx`, dentro del `<article>`:
