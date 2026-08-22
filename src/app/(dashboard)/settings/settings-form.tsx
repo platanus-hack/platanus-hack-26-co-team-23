@@ -126,7 +126,9 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
         <CardContent className="space-y-6">
           {/* Name */}
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre de la empresa</Label>
+            <Label htmlFor="name">
+              Nombre de la empresa <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="name"
               value={name}
@@ -138,7 +140,9 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
 
           {/* Company Type */}
           <div className="space-y-3">
-            <Label>Tipo de sociedad</Label>
+            <Label>
+              Tipo de sociedad <span className="text-destructive">*</span>
+            </Label>
             <div className="flex flex-wrap gap-2">
               {COMPANY_TYPES.map((type) => (
                 <Toggle
@@ -297,7 +301,7 @@ function ReadOnlyView({ company }: { company: Company | null }) {
       <Card>
         <CardContent className="pt-6">
           <p className="text-muted-foreground">
-            Tu organización aún no ha configurado CumplAI.
+            Tu organización aún no ha configurado ComplAI.
           </p>
         </CardContent>
       </Card>

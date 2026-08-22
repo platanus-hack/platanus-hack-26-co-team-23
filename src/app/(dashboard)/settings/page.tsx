@@ -38,7 +38,7 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              Tu organización aún no ha configurado CumplAI. Contacta a un administrador para que complete la configuración.
+              Tu organización aún no ha configurado ComplAI. Contacta a un administrador para que complete la configuración.
             </p>
           </CardContent>
         </Card>
@@ -53,7 +53,7 @@ export default async function SettingsPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Configuración</h1>
           <p className="text-muted-foreground">
-            Configura tu empresa para que CumplAI pueda monitorear la normativa relevante.
+            Configura tu empresa para que ComplAI pueda monitorear la normativa relevante.
           </p>
         </div>
 
