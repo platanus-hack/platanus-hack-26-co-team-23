@@ -14,6 +14,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   mirror:
+    # This file gets mirrored into platanus-hack too, where it would run without the
+    # MIRROR_TOKEN secret and fail (spamming failure emails). Only run in the source repo.
+    if: github.repository == 'ComplAI-Crew/comply'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
