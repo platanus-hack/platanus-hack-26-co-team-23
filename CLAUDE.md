@@ -27,12 +27,14 @@ delegable a quien vaya adelantado.
 
 ## Reglas del repo (no negociables en las 36h)
 
-- **Nadie arranca su track hasta que la Task 0 esté en `main`.** Es el contrato compartido
-  (schema + `src/lib/types.ts` + seed). Después, nadie espera a nadie: el seed alimenta todo.
-- **Dual-push:** `origin` tiene dos push-URLs (este repo + `platanus-hack/platanus-hack-26-co-team-23`).
-  Configúralo con los 2 comandos del [README](./README.md). **Jamás pushear directo al repo
-  de Platanus** — es un espejo, pushear allá desincroniza las historias.
-- Commits pequeños y frecuentes directo a `main` (o ramas de vida <2h). Conventional Commits.
+- **La Task 0 y el track M1 (pipeline de ingesta) ya están en `main` y verificados** — el
+  contrato compartido (schema + `src/lib/types.ts` + seed + 64 normas reales en Supabase) existe.
+- **Flujo de ramas:** `feat/<lo-tuyo>` sale de **`dev`** (rama default) → PR a `dev` →
+  cuando hay demo-candidate, PR `dev` → `main`. Ramas de vida corta (<3h), mergear apenas compile.
+- **Espejo a Platanus: automático.** Un GitHub Action (`.github/workflows/mirror.yml`) replica
+  cada push al repo de Platanus. **NO configures dual-push local** (regla vieja del README) y
+  **jamás pushees directo al repo de Platanus** — desincroniza el espejo y el Action fallará.
+- Conventional Commits.
 - Cada tarea del plan declara qué **consume/produce** — si necesitas algo de otro track,
   míralo en su bloque `Interfaces`, no leas su código a medio hacer.
 - El agente PRO **nunca mergea PRs**; el modelo LLM se referencia solo vía `MODEL` en
