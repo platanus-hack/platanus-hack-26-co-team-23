@@ -8,7 +8,7 @@ Estado de la rama `feat/task-7-pro-repo-analyzer` (Task 7 del plan, track M4).
 
 ## Qué hace
 
-Cuando una norma afecta a una empresa que conectó su repo, CumplIA lee el código,
+Cuando una norma afecta a una empresa que conectó su repo, complAI lee el código,
 propone el cambio que la norma exige y abre un PR **en draft** asignado a un revisor humano.
 **Nunca mergea**: un draft ni siquiera admite merge hasta que una persona lo marque
 "ready for review". En repos privados de plan Free, que no admiten draft, cae a PR normal.

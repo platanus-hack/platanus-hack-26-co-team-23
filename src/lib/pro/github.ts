@@ -193,8 +193,8 @@ export async function openCompliancePR(args: {
     repo,
     base,
     head: branch,
-    title: `[CumplIA] Cumplimiento: ${args.normTitle.slice(0, 80)}`,
-    body: `${pr_body}\n\n---\n🤖 PR generado por CumplIA. **Requiere revisión humana — nunca mergear sin aprobar.**`,
+    title: `[complAI] Cumplimiento: ${args.normTitle.slice(0, 80)}`,
+    body: `${pr_body}\n\n---\n🤖 PR generado por complAI. **Requiere revisión humana — nunca mergear sin aprobar.**`,
   }
   const { data: pr } = await gh.rest.pulls
     .create({ ...nuevoPr, draft: true })
