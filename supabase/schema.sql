@@ -20,13 +20,17 @@ create table norms (
 
 create table companies (
   id uuid primary key default gen_random_uuid(),
-  owner_user_id uuid references auth.users not null,
+  -- auth es Clerk, no Supabase Auth: la empresa cuelga de la organización de Clerk,
+  -- no de un usuario. clerk_user_id registra quién guardó el último cambio.
+  clerk_org_id text unique,
+  clerk_user_id text,
   name text not null,
   company_type text not null,              -- 'SAS' | 'SA' | 'LTDA' | 'persona natural'
   sectors text[] not null default '{}',
   channels jsonb not null default '[]',    -- [{type, min_severity?, config}] — ver ChannelConfig en types.ts
   github_repo text,                        -- 'owner/repo' (PRO)
   reviewer_github text,                    -- username del Tech Lead revisor (PRO)
+  github_installation_id bigint,           -- instalación de la GitHub App; null = fallback a GITHUB_TOKEN (PRO)
   created_at timestamptz default now()
 );
 
@@ -41,11 +45,11 @@ create table alerts (
   unique (company_id, norm_id)
 );
 
+-- Sin sesión de Supabase Auth (el login es Clerk), así que no hay auth.uid() con el
+-- que escribir una policy por fila. RLS queda encendida como cierre por defecto —
+-- ninguna key de Supabase la atraviesa — y toda lectura/escritura de companies/alerts
+-- pasa por el server (service role) validando organización y rol contra Clerk.
 alter table companies enable row level security;
-create policy "own company" on companies for all
-  using (auth.uid() = owner_user_id) with check (auth.uid() = owner_user_id);
 alter table alerts enable row level security;
-create policy "own alerts" on alerts for select
-  using (company_id in (select id from companies where owner_user_id = auth.uid()));
 alter table norms enable row level security;
 create policy "norms are public" on norms for select using (true);
