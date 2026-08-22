@@ -1,0 +1,22 @@
+# Espeja este repo al de Platanus (juzgamiento) en cada push a cualquier rama.
+# Reemplaza el dual-push local: los merges de PRs por la UI también quedan espejados.
+# Push fast-forward only (sin --force): si el espejo diverge (alguien pusheó directo
+# a Platanus), este job FALLA a propósito — reconciliar con pull/merge, nunca pisar.
+# Requiere el secret MIRROR_TOKEN: PAT classic (scope repo) de una cuenta con
+# escritura en platanus-hack/platanus-hack-26-co-team-23.
+name: mirror-to-platanus
+on: push
+concurrency:
+  group: mirror
+  cancel-in-progress: false
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Push all branches to platanus mirror (fast-forward only)
+        run: |
+          git push --all \
+            "https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/platanus-hack/platanus-hack-26-co-team-23.git"
