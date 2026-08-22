@@ -1,5 +1,5 @@
 import type { ChannelAdapter } from '../types'
-import { formatAlertText } from '../format'
+import { formatAlertText, clip } from '../format'
 
 // Kapso proxies the WhatsApp Cloud API: https://docs.kapso.ai/api/meta/whatsapp/messages/send-a-message
 export const whatsapp: ChannelAdapter = {
@@ -13,7 +13,7 @@ export const whatsapp: ChannelAdapter = {
           messaging_product: 'whatsapp',
           to: config.phone,
           type: 'text',
-          text: { body: formatAlertText(payload).replaceAll('_', '') },
+          text: { body: clip(formatAlertText(payload).replaceAll('_', ''), 4096) },
         }),
       },
     )
