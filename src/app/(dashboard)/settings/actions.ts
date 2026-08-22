@@ -20,17 +20,15 @@ type SettingsFormData = {
 
 export async function updateCompanySettings(data: SettingsFormData) {
   try {
-    const { sessionClaims, orgRole } = await auth();
+    const { userId, orgId, orgRole } = await auth();
 
-    if (!sessionClaims) {
+    if (!userId || !orgId) {
       return { error: "No autorizado" };
     }
 
     if (orgRole !== "org:admin") {
       return { error: "Solo administradores pueden cambiar estas configuraciones" };
     }
-
-    const orgId = sessionClaims.org_id as string;
 
     // Validate input
     if (!data.name || !data.company_type) {
@@ -71,7 +69,7 @@ export async function updateCompanySettings(data: SettingsFormData) {
       .upsert(
         {
           clerk_org_id: orgId,
-          clerk_user_id: sessionClaims.sub,
+          clerk_user_id: userId,
           name: data.name,
           company_type: data.company_type,
           sectors: validSectors,

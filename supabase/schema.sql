@@ -22,7 +22,7 @@ create table companies (
   id uuid primary key default gen_random_uuid(),
   -- auth es Clerk, no Supabase Auth: la empresa cuelga de la organización de Clerk,
   -- no de un usuario. clerk_user_id registra quién guardó el último cambio.
-  clerk_org_id text not null unique,
+  clerk_org_id text unique,
   clerk_user_id text,
   name text not null,
   company_type text not null,              -- 'SAS' | 'SA' | 'LTDA' | 'persona natural'

@@ -10,13 +10,11 @@ import { Button } from "@/components/ui/button";
 type AlertWithNorm = Alert & { norm: Norm };
 
 export default async function FeedPage() {
-  const { sessionClaims } = await auth();
+  const { userId, orgId } = await auth();
 
-  if (!sessionClaims) {
+  if (!userId || !orgId) {
     redirect("/sign-in");
   }
-
-  const orgId = sessionClaims.org_id as string;
 
   // Fetch company
   let company = null;

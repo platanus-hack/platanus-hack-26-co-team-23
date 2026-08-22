@@ -6,13 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SettingsForm } from "./settings-form";
 
 export default async function SettingsPage() {
-  const { sessionClaims, orgRole } = await auth();
+  const { userId, orgId, orgRole } = await auth();
 
-  if (!sessionClaims) {
+  if (!userId || !orgId) {
     redirect("/sign-in");
   }
 
-  const orgId = sessionClaims.org_id as string;
   const isAdmin = orgRole === "org:admin";
 
   // Fetch company data
@@ -68,7 +67,7 @@ export default async function SettingsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Configuración</h1>
         <p className="text-muted-foreground">
-          Manage your company profile and notification channels.
+          Administra el perfil de tu empresa y los canales de notificación.
         </p>
       </div>
 
