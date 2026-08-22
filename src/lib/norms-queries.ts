@@ -116,6 +116,6 @@ export async function remediationPlan(opts: { norma: string; stack?: string }) {
     }],
   })
   const block = msg.content.find((b) => b.type === 'tool_use')
-  const plan = block && block.type === 'tool_use' ? block.input : {}
+  const plan = (block && block.type === 'tool_use' ? block.input : {}) as Record<string, unknown>
   return { norma: norm.title, norm_id: norm.external_id, url: norm.url, ...plan }
 }
