@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Company, CHANNEL_TYPES, COMPANY_TYPES, SECTORS } from "@/lib/types";
 import { updateCompanySettings } from "./actions";
@@ -11,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Toggle } from "@/components/ui/toggle";
+import { GithubConnect } from "./github-connect";
 
 type ChannelState = {
   type: string;
@@ -25,6 +27,7 @@ type SettingsFormProps = {
 };
 
 export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
+  const router = useRouter();
   const [name, setName] = useState(company?.name || "");
   const [companyType, setCompanyType] = useState(company?.company_type || "");
   const [sectors, setSectors] = useState<string[]>(company?.sectors || []);
@@ -48,7 +51,6 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
       };
     });
   });
-  const [githubRepo, setGithubRepo] = useState(company?.github_repo || "");
   const [reviewerGithub, setReviewerGithub] = useState(company?.reviewer_github || "");
   const [loading, setLoading] = useState(false);
 
@@ -92,12 +94,12 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
           config: ch.config,
           min_severity: ch.min_severity,
         })),
-        github_repo: githubRepo || null,
         reviewer_github: reviewerGithub || null,
       });
 
       if (result?.success) {
         toast.success("Configuración guardada exitosamente");
+        if (!company) router.refresh();
       } else if (result?.error) {
         toast.error(result.error);
       }
@@ -259,19 +261,10 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
         <CardHeader>
           <CardTitle>Configuración PRO</CardTitle>
           <CardDescription>
-            Configura tu repositorio de GitHub para análisis de compliance.
+            Asigna quién revisa los PRs de cumplimiento que abre complAI.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="github-repo">Repositorio GitHub</Label>
-            <Input
-              id="github-repo"
-              value={githubRepo}
-              onChange={(e) => setGithubRepo(e.target.value)}
-              placeholder="owner/repo"
-            />
-          </div>
           <div className="space-y-2">
             <Label htmlFor="reviewer-github">Revisor GitHub</Label>
             <Input
@@ -283,6 +276,9 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* GitHub connect: se guarda solo, fuera del submit del formulario */}
+      {company && <GithubConnect companyId={company.id} />}
 
       {/* Submit Button */}
       <div className="flex justify-end">
