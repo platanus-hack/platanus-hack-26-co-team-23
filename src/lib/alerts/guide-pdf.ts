@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib'
 import type { Brief } from './brief'
+import { LOGO_PNG_BASE64 } from './logo'
 
 /**
  * Las fuentes estándar de PDF codifican en WinAnsi: acentos y ñ entran, pero un
@@ -42,10 +43,28 @@ export async function buildGuidePdf(
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
   const ancho = A4.w - MARGIN * 2
 
-  const cur: Cursor = { page: pdf.addPage([A4.w, A4.h]), y: A4.h - MARGIN }
+  const logo = await pdf.embedPng(Buffer.from(LOGO_PNG_BASE64, 'base64'))
+
+  // La marca de agua se estampa al crear la página, antes de cualquier texto:
+  // en PDF lo que se dibuja primero queda debajo.
+  const nuevaPagina = (): PDFPage => {
+    const page = pdf.addPage([A4.w, A4.h])
+    const w = A4.w * 0.62
+    const h = (w * logo.height) / logo.width
+    page.drawImage(logo, {
+      x: (A4.w - w) / 2,
+      y: (A4.h - h) / 2,
+      width: w,
+      height: h,
+      opacity: 0.06,
+    })
+    return page
+  }
+
+  const cur: Cursor = { page: nuevaPagina(), y: A4.h - MARGIN }
   const espacio = (n: number) => {
     if (cur.y - n < MARGIN) {
-      cur.page = pdf.addPage([A4.w, A4.h])
+      cur.page = nuevaPagina()
       cur.y = A4.h - MARGIN
     }
   }
