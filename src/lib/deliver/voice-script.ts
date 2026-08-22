@@ -1,6 +1,6 @@
-import { createHmac, timingSafeEqual } from 'node:crypto'
 import type { AlertPayload } from './types'
 import { appUrl } from '@/lib/app-url'
+import { signLink, verifyLink } from '@/lib/api-auth'
 
 /**
  * The spoken alert and the TwiML that wraps it.
@@ -32,23 +32,9 @@ const escapeXml = (s: string): string =>
 export const twimlFor = (speech: string): string =>
   `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Mia" language="es-MX">${escapeXml(speech)}</Say></Response>`
 
-/**
- * Twilio fetches the TwiML unauthenticated, so the URL carries a signature: without
- * it, anyone who guessed an alert id could read that company's compliance findings.
- */
-const secret = () => {
-  const s = process.env.CRON_SECRET
-  if (!s) throw new Error('falta CRON_SECRET')
-  return s
-}
-const sign = (alertId: string) => createHmac('sha256', secret()).update(`twiml:${alertId}`).digest('base64url')
-
+// Twilio fetches this unauthenticated, so the URL carries a signature.
 export const twimlUrl = (alertId: string) =>
-  `${appUrl()}/api/alerts/${alertId}/twiml?sig=${sign(alertId)}`
+  `${appUrl()}/api/alerts/${alertId}/twiml?sig=${signLink('twiml', alertId)}`
 
-export function verifyTwimlSig(alertId: string, sig: string | null): boolean {
-  if (!sig) return false
-  const given = Buffer.from(sig)
-  const expected = Buffer.from(sign(alertId))
-  return given.length === expected.length && timingSafeEqual(given, expected)
-}
+export const verifyTwimlSig = (alertId: string, sig: string | null): boolean =>
+  verifyLink('twiml', alertId, sig)

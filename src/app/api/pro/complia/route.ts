@@ -3,21 +3,21 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { generateCompliaMd } from '@/lib/pro/complia-md'
 import { listRepoPaths } from '@/lib/pro/github'
 import { octokitFor } from '@/lib/pro/octokit'
+import { callerCompany } from '@/lib/api-auth'
 
 export const maxDuration = 120
 
-// lazy: companyId comes from the client. Once auth exists (Task 3), pull it from the session.
-// What must NEVER happen again: accepting a loose repo/installationId from the body — that
-// let anyone read the code of any installation whose id they guessed.
 
 /**
- * POST { companyId, repo? } → { markdown } — the proposed COMPLIA.md.
+ * POST { repo? } → { markdown } — the proposed COMPLIA.md.
  * The repo and credential come from the company, not the request. `repo` is optional and
  * only accepted if that company's installation actually reaches it.
  */
 export async function POST(req: NextRequest) {
-  const { companyId, repo: requested } = await req.json()
-  if (!companyId) return NextResponse.json({ error: 'missing companyId' }, { status: 400 })
+  const caller = await callerCompany()
+  if (!caller) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const companyId = caller.id
+  const { repo: requested } = await req.json().catch(() => ({}))
 
   const db = supabaseAdmin()
   const { data: company } = await db

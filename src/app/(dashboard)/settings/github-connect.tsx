@@ -62,7 +62,7 @@ export function GithubConnect({ companyId, children }: Props) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/pro/repos?companyId=${companyId}`);
+      const res = await fetch(`/api/pro/repos`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo consultar GitHub");
       setState(data);
@@ -104,7 +104,7 @@ export function GithubConnect({ companyId, children }: Props) {
       const res = await fetch("/api/pro/repos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId, repo: pickedRepo }),
+        body: JSON.stringify({ repo: pickedRepo }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo guardar el repositorio");
@@ -125,7 +125,7 @@ export function GithubConnect({ companyId, children }: Props) {
       const res = await fetch("/api/pro/complia", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId }),
+        body: JSON.stringify({}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo generar COMPLIA.md");
@@ -150,7 +150,7 @@ export function GithubConnect({ companyId, children }: Props) {
       const res = await fetch("/api/pro/complia/pr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId, markdown }),
+        body: JSON.stringify({ markdown }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo abrir el PR");

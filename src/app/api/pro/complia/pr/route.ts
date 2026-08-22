@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { openPrWithChanges } from '@/lib/pro/github'
 import { octokitFor } from '@/lib/pro/octokit'
+import { callerCompany } from '@/lib/api-auth'
 
 export const maxDuration = 120
 
-// lazy: companyId comes from the client, same as the rest of /api/pro. With auth, from the session.
 
 /**
  * POST { companyId, markdown } → { prUrl }
@@ -13,9 +13,11 @@ export const maxDuration = 120
  * repo. The markdown is what the user reviewed in the dashboard.
  */
 export async function POST(req: NextRequest) {
-  const { companyId, markdown } = await req.json()
-  if (!companyId || !markdown?.trim())
-    return NextResponse.json({ error: 'missing companyId or markdown' }, { status: 400 })
+  const caller = await callerCompany()
+  if (!caller) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const companyId = caller.id
+  const { markdown } = await req.json()
+  if (!markdown?.trim()) return NextResponse.json({ error: 'missing markdown' }, { status: 400 })
 
   const db = supabaseAdmin()
   const { data: company } = await db
