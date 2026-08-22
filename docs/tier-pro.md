@@ -3,8 +3,8 @@
 Estado de la rama `feat/task-7-pro-repo-analyzer` (Task 7 del plan, track M4).
 
 **Verificado end-to-end el 2026-08-22:**
-[PR #1 en `ComplAI-Crew/facturador-demo`](https://github.com/ComplAI-Crew/facturador-demo/pull/1)
-— abierto por `complia-app[bot]`, revisor solicitado, 32s desde el POST, sin merge.
+[PR #2 en `ComplAI-Crew/facturador-demo`](https://github.com/ComplAI-Crew/facturador-demo/pull/2)
+— abierto por `complia-app[bot]`, revisor solicitado, ~34s desde el POST, sin merge.
 
 ## Qué hace
 
@@ -17,9 +17,36 @@ alerta (norma × empresa)
    └─ POST /api/pro/pr { alertId }
         ├─ octokitFor(installationId)      credencial de ESA empresa
         ├─ lee COMPLIA.md del repo         → qué archivos mirar
-        ├─ Claude propone los cambios      → tool use forzado + zod
-        └─ rama + commits + PR + reviewer  → devuelve prUrl, lo guarda en alerts.pr_url
+        ├─ ¿la norma regula lo que hace este código?
+        │     no → { skipped: true, reason } y NO se abre PR
+        └─ sí → cambios + rama + commits + PR + reviewer
+                devuelve prUrl, lo guarda en alerts.pr_url
 ```
+
+### El gate de relevancia
+
+Que una norma matchee con la empresa no significa que obligue a tocar su código. Antes de
+proponer nada, el modelo decide `aplica` **por materia**: ¿la norma regula la actividad que
+este código ejecuta? Si no, devuelve `{ skipped: true, reason }` y no se abre ningún PR.
+
+El campo `aplica` va primero en el schema del tool a propósito: el modelo lo genera antes de
+ponerse a proponer cambios, así la decisión no queda contaminada por el trabajo ya hecho.
+
+La decisión es solo de ámbito, no de detalle. Una norma vaga que sí regula la actividad
+genera PR igual, con los supuestos declarados en el body bajo "Qué debe confirmar el
+revisor" — para eso existe el revisor humano. Lo que el prompt prohíbe es inventar cifras,
+plazos o códigos presentándolos como si vinieran de la norma.
+
+Verificado contra tres alertas reales sobre `facturador-demo`:
+
+| Norma | Veredicto |
+|---|---|
+| Resolución DIAN — campos obligatorios en factura electrónica | PR abierto |
+| Circular SFC — pruebas de resistencia (EPR/PAC/PAL) | sin PR: regula entidades vigiladas, no un facturador |
+| Circular SFC — retención de logs de transacciones | sin PR: mismo motivo, pese al nombre parecido a `logger.ts` |
+
+El tercero es interesante: por nombre parecía tocar `src/logger.ts`, y el gate lo rechazó
+por ámbito. De paso deja ver un falso positivo del matching.
 
 ## Piezas
 
@@ -115,7 +142,10 @@ if (company.github_repo && company.auto_pr && norm.severity === 'high') {
     obligations: norm.obligations,
     impact: alert.impact,
   })
-    .then((prUrl) => db.from('alerts').update({ pr_url: prUrl }).eq('id', alert.id))
+    .then((res) => {
+      if ('skipped' in res) return console.log('sin PR para', alert.id, '—', res.reason)
+      return db.from('alerts').update({ pr_url: res.prUrl }).eq('id', alert.id)
+    })
     .catch((e) => console.error('PR automático falló para', alert.id, e))
 }
 ```
