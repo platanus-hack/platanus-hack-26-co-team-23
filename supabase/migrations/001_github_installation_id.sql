@@ -1,3 +1,3 @@
--- El schema base ya está aplicado en Supabase: esta migración agrega la columna
--- sin recrear nada. Correr en el SQL editor del proyecto.
+-- The base schema is already applied on Supabase: this migration just adds the
+-- column without recreating anything. Run in the project's SQL editor.
 alter table companies add column if not exists github_installation_id bigint;

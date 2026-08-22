@@ -13,7 +13,7 @@ function extractKey(req: Request): string | null {
   return header?.startsWith('cai_') ? header : null
 }
 
-// true si la request trae una key válida (o la MASTER_API_KEY de bootstrap/demo).
+// true if the request carries a valid key (or the bootstrap/demo MASTER_API_KEY).
 export async function validateApiKey(req: Request): Promise<boolean> {
   const key = extractKey(req)
   if (!key) return false
@@ -23,13 +23,13 @@ export async function validateApiKey(req: Request): Promise<boolean> {
   const { data } = await db.from('api_keys')
     .select('id').eq('key_hash', hashApiKey(key)).is('revoked_at', null).maybeSingle()
   if (!data) return false
-  // telemetría best-effort — no bloquea la request
+  // best-effort telemetry — doesn't block the request
   void db.from('api_keys').update({ last_used_at: new Date().toISOString() }).eq('id', data.id).then(() => {})
   return true
 }
 
 export const unauthorized = () =>
   new Response(
-    JSON.stringify({ error: 'API key requerida. Genera la tuya en https://complai-co.vercel.app/keys (header x-api-key o Authorization: Bearer cai_...)' }),
+    JSON.stringify({ error: 'API key required. Generate yours at https://complai-co.vercel.app/keys (x-api-key header or Authorization: Bearer cai_...)' }),
     { status: 401, headers: { 'Content-Type': 'application/json' } },
   )

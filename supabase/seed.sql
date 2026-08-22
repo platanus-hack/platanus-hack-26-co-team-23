@@ -1,6 +1,6 @@
--- Seed: 3 normas curadas con impacto claro en código, para que todos los tracks
--- trabajen sin esperar la ingesta real. ANTES DE LA DEMO: reemplazar raw_text por
--- el texto real de cada norma (buscarlas en el Normograma DIAN / SFC).
+-- Seed: 3 curated norms with a clear impact on code, so every track can
+-- work without waiting on real ingestion. BEFORE THE DEMO: replace raw_text with
+-- the real text of each norm (look them up in the DIAN / SFC Normograma).
 insert into norms (source, external_id, title, issuer, norm_type, published_at, url, raw_text,
   summary, sectors, company_types, obligations, severity, analyzed_at) values
 ('seed', 'seed-001', 'Resolución DIAN — nuevos campos obligatorios en factura electrónica',

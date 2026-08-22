@@ -256,8 +256,8 @@ export function SettingsForm({ company, isAdmin }: SettingsFormProps) {
         </CardContent>
       </Card>
 
-      {/* Tier PRO: conexión del repo + el revisor, en una sola tarjeta.
-          La conexión se guarda sola; el revisor va con el submit del formulario. */}
+      {/* PRO tier: repo connection + reviewer, in a single card.
+          The connection saves itself; the reviewer goes with the form's submit. */}
       {company && (
         <GithubConnect companyId={company.id}>
           <div className="space-y-2 border-t pt-4">

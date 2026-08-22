@@ -3,7 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { withApiGuard } from '@/lib/api-guard'
 import { NORM_FIELDS } from '@/lib/norms-queries'
 
-// API read-only con API key: superficie que consume el paquete npm complai-mcp.
+// Read-only API with an API key: the surface the complai-mcp npm package consumes.
+// Only already-analyzed norms; access control is by key generated at /keys.
 export const GET = withApiGuard(async (req) => {
   const { searchParams } = new URL(req.url)
   const sector = searchParams.get('sector')

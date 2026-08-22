@@ -1,120 +1,122 @@
-# Tier PRO — análisis de repo → PR de cumplimiento → revisor
+# PRO tier — repo analysis → compliance PR → reviewer
 
-Estado de la rama `feat/task-7-pro-repo-analyzer` (Task 7 del plan, track M4).
+Status of branch `feat/task-7-pro-repo-analyzer` (Task 7 of the plan, track M4).
 
-**Verificado end-to-end el 2026-08-22:**
-[PR #3 en `ComplAI-Crew/facturador-demo`](https://github.com/ComplAI-Crew/facturador-demo/pull/3)
-— **draft**, abierto por `complia-app[bot]`, revisor solicitado, ~36s desde el POST, sin merge.
+**Verified end-to-end on 2026-08-22:**
+[PR #3 on `ComplAI-Crew/facturador-demo`](https://github.com/ComplAI-Crew/facturador-demo/pull/3)
+— **draft**, opened by `complia-app[bot]`, reviewer requested, ~36s from the POST, not merged.
 
-## Qué hace
+## What it does
 
-Cuando una norma afecta a una empresa que conectó su repo, complAI lee el código,
-propone el cambio que la norma exige y abre un PR **en draft** asignado a un revisor humano.
-**Nunca mergea**: un draft ni siquiera admite merge hasta que una persona lo marque
-"ready for review". En repos privados de plan Free, que no admiten draft, cae a PR normal.
+When a norm affects a company that connected its repo, complAI reads the code,
+proposes the change the norm requires, and opens a PR **in draft** assigned to a human reviewer.
+**Never merges**: a draft doesn't even allow merging until a person marks it
+"ready for review". In private repos on the Free plan, which don't support drafts, it falls back to a normal PR.
 
 ```
-alerta (norma × empresa)
+alert (norm × company)
    └─ POST /api/pro/pr { alertId }
-        ├─ octokitFor(installationId)      credencial de ESA empresa
-        ├─ lee COMPLIA.md del repo         → qué archivos mirar
-        ├─ ¿la norma regula lo que hace este código?
-        │     no → { skipped: true, reason } y NO se abre PR
-        └─ sí → cambios + rama + commits + PR draft + reviewer
-                devuelve prUrl, lo guarda en alerts.pr_url
+        ├─ octokitFor(installationId)      that company's credential
+        ├─ reads the repo's COMPLIA.md     → which files to look at
+        ├─ does the norm regulate what this code does?
+        │     no → { skipped: true, reason } and NO PR is opened
+        └─ yes → changes + branch + commits + draft PR + reviewer
+                returns prUrl, saves it in alerts.pr_url
 ```
 
-### El gate de relevancia
+### The relevance gate
 
-Que una norma matchee con la empresa no significa que obligue a tocar su código. Antes de
-proponer nada, el modelo decide `aplica` **por materia**: ¿la norma regula la actividad que
-este código ejecuta? Si no, devuelve `{ skipped: true, reason }` y no se abre ningún PR.
+A norm matching a company doesn't mean it requires touching its code. Before
+proposing anything, the model decides `aplica` (applies) **by subject matter**: does the norm
+regulate the activity this code performs? If not, it returns `{ skipped: true, reason }`
+and no PR is opened.
 
-El campo `aplica` va primero en el schema del tool a propósito: el modelo lo genera antes de
-ponerse a proponer cambios, así la decisión no queda contaminada por el trabajo ya hecho.
+The `aplica` field comes first in the tool schema on purpose: the model generates it before
+starting to propose changes, so the decision isn't contaminated by work already done.
 
-La decisión es solo de ámbito, no de detalle. Una norma vaga que sí regula la actividad
-genera PR igual, con los supuestos declarados en el body bajo "Qué debe confirmar el
-revisor" — para eso existe el revisor humano. Lo que el prompt prohíbe es inventar cifras,
-plazos o códigos presentándolos como si vinieran de la norma.
+The decision is scope-only, not detail-level. A vague norm that does regulate the activity
+still generates a PR, with the assumptions declared in the body under "What the
+reviewer must confirm" — that's what the human reviewer is for. What the prompt
+forbids is inventing figures, deadlines, or codes and presenting them as if they came
+from the norm.
 
-Verificado contra tres alertas reales sobre `facturador-demo`:
+Verified against three real alerts on `facturador-demo`:
 
-| Norma | Veredicto |
+| Norm | Verdict |
 |---|---|
-| Resolución DIAN — campos obligatorios en factura electrónica | PR abierto |
-| Circular SFC — pruebas de resistencia (EPR/PAC/PAL) | sin PR: regula entidades vigiladas, no un facturador |
-| Circular SFC — retención de logs de transacciones | sin PR: mismo motivo, pese al nombre parecido a `logger.ts` |
+| DIAN resolution — mandatory fields on electronic invoices | PR opened |
+| SFC circular — stress tests (EPR/PAC/PAL) | no PR: regulates supervised entities, not an invoicer |
+| SFC circular — transaction log retention | no PR: same reason, despite the name sounding like `logger.ts` |
 
-El tercero es interesante: por nombre parecía tocar `src/logger.ts`, y el gate lo rechazó
-por ámbito. De paso deja ver un falso positivo del matching.
+The third one is interesting: by name it looked like it touched `src/logger.ts`, and the gate rejected
+it on scope grounds. It also surfaces a matching false positive along the way.
 
-## Piezas
+## Pieces
 
-| Archivo | Rol |
+| File | Role |
 |---|---|
-| `src/lib/pro/github.ts` | `openCompliancePR()` — el flujo completo |
-| `src/lib/pro/complia-md.ts` | parser del manifiesto + generador (`generateCompliaMd`) |
-| `src/lib/pro/octokit.ts` | `octokitFor()` — credencial por empresa |
-| `src/lib/pro/install-state.ts` | `state` firmado del flujo de instalación |
-| `src/app/api/pro/pr/route.ts` | dispara el PR desde una alerta |
-| `src/app/api/pro/complia/route.ts` | genera el `COMPLIA.md` de un repo |
-| `src/app/api/pro/repos/route.ts` | lista y fija el repo de la empresa |
-| `src/app/api/pro/github/callback/route.ts` | guarda el `installation_id` tras instalar |
-| `src/app/(dashboard)/feed/pr-button.tsx` | botón del feed |
+| `src/lib/pro/github.ts` | `openCompliancePR()` — the full flow |
+| `src/lib/pro/complia-md.ts` | manifest parser + generator (`generateCompliaMd`) |
+| `src/lib/pro/octokit.ts` | `octokitFor()` — per-company credential |
+| `src/lib/pro/install-state.ts` | signed `state` for the install flow |
+| `src/app/api/pro/pr/route.ts` | triggers the PR from an alert |
+| `src/app/api/pro/complia/route.ts` | generates a repo's `COMPLIA.md` |
+| `src/app/api/pro/repos/route.ts` | lists and pins the company's repo |
+| `src/app/api/pro/github/callback/route.ts` | saves the `installation_id` after install |
+| `src/app/(dashboard)/feed/pr-button.tsx` | the feed button |
 
-### COMPLIA.md — el repo declara qué mirar
+### COMPLIA.md — the repo declares what to look at
 
-Sin manifiesto, el agente toma los primeros 15 archivos por orden alfabético y puede
-perderse el que importa. Con `COMPLIA.md` en la raíz del repo del cliente, **toda ruta
-escrita en backticks que exista en el árbol** entra a la selección (una que termine en
-`/` expande la carpeta), y el markdown completo se inyecta como contexto.
+Without a manifest, the agent takes the first 15 files in alphabetical order and can
+miss the one that matters. With a `COMPLIA.md` at the root of the client's repo, **every
+path written in backticks that exists in the tree** enters the selection (one that ends in
+`/` expands the folder), and the full markdown is injected as context.
 
-Lo escribe el cliente, así que va delimitado en `<contexto_del_repo>` y etiquetado como
-información, no instrucciones; y las rutas se validan contra el árbol real, de modo que
-un manifiesto hostil no puede hacer leer nada fuera del repo.
+The client writes it, so it's delimited inside `<contexto_del_repo>` and labeled as
+information, not instructions; and the paths are validated against the real tree, so
+a hostile manifest can't make it read anything outside the repo.
 
-`POST /api/pro/complia { companyId }` lo genera analizando el repo. El repo y la credencial
-salen de la empresa en la DB, nunca del request: aceptar un `installationId` suelto dejaba
-leer el código de cualquier instalación cuyo id se adivinara.
+`POST /api/pro/complia { companyId }` generates it by analyzing the repo. The repo and credential
+come from the company in the DB, never from the request: accepting a loose `installationId`
+would let anyone read the code of any installation whose id they guessed.
 
-### Credencial por empresa
+### Per-company credential
 
-`GITHUB_TOKEN` era una sola cuenta que debía ser colaboradora de cada repo cliente: no
-escala. Ahora cada empresa guarda `companies.github_installation_id` y `octokitFor()`
-pide al vuelo un token de instalación (1h, alcance solo los repos que el cliente eligió).
-`GITHUB_TOKEN` queda como fallback de demo.
+`GITHUB_TOKEN` used to be a single account that had to be a collaborator on every client
+repo: doesn't scale. Now each company stores `companies.github_installation_id` and
+`octokitFor()` requests an installation token on the fly (1h, scoped only to the repos the
+client chose). `GITHUB_TOKEN` remains as a demo fallback.
 
-GitHub App: **complia-app** (App ID `4680485`), permisos `contents:write`,
+GitHub App: **complia-app** (App ID `4680485`), permissions `contents:write`,
 `pull_requests:write`, `metadata:read`.
 
-## Cómo probarlo
+## How to test it
 
 ```bash
-# 1. Migración + datos de demo
+# 1. Migration + demo data
 psql/SQL editor → supabase/migrations/001_github_installation_id.sql
-                  supabase/seed-demo-pro.sql   # devuelve el alert_id
+                  supabase/seed-demo-pro.sql   # returns the alert_id
 
-# 2. PR de cumplimiento
+# 2. Compliance PR
 curl -X POST localhost:3000/api/pro/pr -H 'Content-Type: application/json' \
   -d '{"alertId":"<alert_id>"}'
 
-# 3. Regenerar el manifiesto de un repo
+# 3. Regenerate a repo's manifest
 curl -X POST localhost:3000/api/pro/complia -H 'Content-Type: application/json' \
   -d '{"companyId":"<company_id>"}' | jq -r .markdown
 ```
 
-Env necesarias: `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_SLUG`,
-`GITHUB_STATE_SECRET`, `ANTHROPIC_API_KEY`, las de Supabase.
+Required env vars: `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_SLUG`,
+`GITHUB_STATE_SECRET`, `ANTHROPIC_API_KEY`, plus the Supabase ones.
 
-## Pendiente
+## Pending
 
-> Handoff detallado para M2/M3, con contratos de API y estados de UI:
+> Detailed handoff for M2/M3, with API contracts and UI states:
 > [`tier-pro-dashboard.md`](./tier-pro-dashboard.md)
 
-### 1. Montar el botón en el feed — bloqueado por M3 (Task 6)
+### 1. Wire the button into the feed — blocked on M3 (Task 6)
 
-Cuando exista `src/app/(dashboard)/feed/page.tsx`, dentro del `<article>`:
+Once `src/app/(dashboard)/feed/page.tsx` exists, inside the `<article>`:
 
 ```tsx
 import { PrButton } from './pr-button'
@@ -122,23 +124,23 @@ import { PrButton } from './pr-button'
 {a.pr_url ? <p>✅ <a href={a.pr_url}>PR de cumplimiento abierto</a></p> : <PrButton alertId={a.id} />}
 ```
 
-### 2. Conectar GitHub desde el dashboard — bloqueado por M2 (Tasks 3/4)
+### 2. Connect GitHub from the dashboard — blocked on M2 (Tasks 3/4)
 
-En settings, un botón a `buildInstallUrl(companyId)` y un `<select>` alimentado por
-`GET /api/pro/repos?companyId=…`, que guarda con `POST /api/pro/repos { companyId, repo }`.
+In settings, a button to `buildInstallUrl(companyId)` and a `<select>` fed by
+`GET /api/pro/repos?companyId=…`, which saves via `POST /api/pro/repos { companyId, repo }`.
 
-El `companyId` sale de la sesión: es la empresa del usuario logueado
-(`companies.owner_user_id = auth.uid()`), nunca del input del usuario.
+`companyId` comes from the session: it's the logged-in user's company
+(`companies.owner_user_id = auth.uid()`), never from user input.
 
-### 3. Disparo automático al matchear — bloqueado por M3 (Task 5)
+### 3. Automatic trigger on match — blocked on M3 (Task 5)
 
-Hoy el PR se abre **manualmente** desde el botón. Eso es deliberado para la demo: cada
-disparo cuesta ~30s de Claude y escribe en el repo del cliente.
+Today the PR opens **manually** from the button. That's deliberate for the demo: each
+trigger costs ~30s of Claude and writes to the client's repo.
 
-El automático va en `/api/cron/match`, justo después de insertar cada alerta:
+The automatic path goes in `/api/cron/match`, right after inserting each alert:
 
 ```ts
-// src/app/api/cron/match/route.ts — tras insertar la alerta
+// src/app/api/cron/match/route.ts — after inserting the alert
 if (company.github_repo && company.auto_pr && norm.severity === 'high') {
   openCompliancePR({
     repo: company.github_repo,
@@ -149,26 +151,27 @@ if (company.github_repo && company.auto_pr && norm.severity === 'high') {
     impact: alert.impact,
   })
     .then((res) => {
-      if ('skipped' in res) return console.log('sin PR para', alert.id, '—', res.reason)
+      if ('skipped' in res) return console.log('no PR for', alert.id, '—', res.reason)
       return db.from('alerts').update({ pr_url: res.prUrl }).eq('id', alert.id)
     })
-    .catch((e) => console.error('PR automático falló para', alert.id, e))
+    .catch((e) => console.error('automatic PR failed for', alert.id, e))
 }
 ```
 
-Tres condiciones antes de encenderlo:
+Three conditions before turning it on:
 
-- **Opt-in por empresa** — `alter table companies add column auto_pr boolean default false`.
-  Abrir PRs en el repo de alguien sin que lo pida es intrusivo.
-- **Solo `severity = 'high'`** — si no, un cron con 64 normas abre decenas de PRs.
-- **No bloquear el cron** — el `openCompliancePR` tarda ~30s; el match no debe esperarlo.
-  Con muchas empresas hay que sacarlo a una cola en vez de dispararlo inline.
+- **Opt-in per company** — `alter table companies add column auto_pr boolean default false`.
+  Opening PRs on someone's repo without them asking for it is intrusive.
+- **`severity = 'high'` only** — otherwise a cron run with 64 norms opens dozens of PRs.
+- **Don't block the cron** — `openCompliancePR` takes ~30s; matching shouldn't wait on it.
+  With many companies this needs to move to a queue instead of firing inline.
 
-### 4. Endurecer antes de clientes reales
+### 4. Harden before real clients
 
-- `GET/POST /api/pro/repos` y `POST /api/pro/complia` reciben `companyId` del request y no
-  hay sesión que verificar (marcado con `lazy:`). Con auth, sacarlo de la sesión. Ninguno
-  acepta ya `installationId` ni repos sueltos: todo se deriva de la empresa.
-- El `state` del callback ya va firmado con HMAC (`GITHUB_STATE_SECRET`), así que nadie
-  puede asociar una instalación a una empresa ajena. Cuando exista auth, sumar la
-  verificación de sesión como segunda barrera.
+- `GET/POST /api/pro/repos` and `POST /api/pro/complia` take `companyId` from the request and
+  there's no session to check (marked with `lazy:`). Once there's auth, pull it from the
+  session instead. Neither one accepts a loose `installationId` or repo anymore: everything
+  is derived from the company.
+- The callback's `state` is already HMAC-signed (`GITHUB_STATE_SECRET`), so no one
+  can associate an installation with someone else's company. Once auth exists, add
+  session verification as a second layer.

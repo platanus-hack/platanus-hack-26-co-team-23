@@ -4,7 +4,7 @@ export type SourceNorm = {
   raw_text: string
 }
 
-// Cada fuente de normativa es un archivo que implementa esto y se registra en ingest.ts.
+// Each regulation source is a file that implements this and registers itself in ingest.ts.
 export interface SourceAdapter {
   id: string
   fetch(limit: number): Promise<SourceNorm[]>

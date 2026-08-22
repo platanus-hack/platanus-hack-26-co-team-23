@@ -38,9 +38,9 @@ type ReposState =
       manageUrl: string;
     };
 
-/** `children` = campos del tier PRO que solo tienen sentido con un repo conectado
- *  (hoy, el revisor). Van aquí para no partir la configuración en dos tarjetas,
- *  pero los guarda el submit del formulario que los pasa. */
+/** `children` = PRO-tier fields that only make sense with a connected repo
+ *  (today, the reviewer). They go here so settings isn't split across two cards,
+ *  but they're saved by the form submit that passes them in. */
 type Props = { companyId: string; children?: React.ReactNode };
 
 export function GithubConnect({ companyId, children }: Props) {
@@ -54,7 +54,7 @@ export function GithubConnect({ companyId, children }: Props) {
   const [saving, setSaving] = useState(false);
   const [markdown, setMarkdown] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
-  // Al terminar de generar se abre el diálogo: ahí se decide si además se abre el PR.
+  // Once generation finishes the dialog opens: that's where it's decided whether to also open the PR.
   const [reviewOpen, setReviewOpen] = useState(false);
   const [wantPr, setWantPr] = useState(true);
   const [creatingPr, setCreatingPr] = useState(false);
@@ -75,17 +75,17 @@ export function GithubConnect({ companyId, children }: Props) {
   }, [companyId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount: no hay librería de data fetching instalada
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount: no data-fetching library installed
     load();
   }, [load]);
 
-  // El callback de instalación vuelve a /settings con ?github=ok|error.
+  // The install callback comes back to /settings with ?github=ok|error.
   useEffect(() => {
     const status = searchParams.get("github");
     if (!status) return;
     if (status === "ok") {
       toast.success("GitHub conectado. Elige el repositorio a monitorear.");
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- refresca tras volver del callback de instalación
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- refresh after returning from the install callback
       load();
     } else if (status === "error") {
       toast.error("No se pudo conectar GitHub. Intenta de nuevo.");
@@ -138,8 +138,8 @@ export function GithubConnect({ companyId, children }: Props) {
     }
   };
 
-  /** Cierra el diálogo. Si se pidió el PR, lo abre antes; si no, el markdown queda
-   *  abajo para copiarlo a mano. */
+  /** Closes the dialog. If the PR was requested, opens it first; otherwise the markdown
+   *  stays below to be copied by hand. */
   const handleConfirmComplia = async () => {
     if (!wantPr || !markdown) {
       setReviewOpen(false);

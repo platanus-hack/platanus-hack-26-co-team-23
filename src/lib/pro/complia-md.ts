@@ -1,17 +1,17 @@
 import { anthropic, MODEL } from '@/lib/llm'
 
 /**
- * COMPLIA.md es el archivo de contexto que vive en la raíz del repo del cliente:
- * describe qué hace el repo y qué archivos importan para cumplimiento normativo.
- * Es prosa libre — lo único que el agente extrae de forma determinista son las
- * rutas escritas en `backticks` que existan de verdad en el árbol del repo.
+ * COMPLIA.md is the context file that lives at the root of the client's repo:
+ * it describes what the repo does and which files matter for regulatory compliance.
+ * It's free-form prose — the only thing the agent extracts deterministically are the
+ * paths written in `backticks` that actually exist in the repo's tree.
  */
 export const COMPLIA_FILENAMES = ['COMPLIA.md', 'complia.md', '.complia.md']
 
 /**
- * Rutas mencionadas en backticks que existen en el repo. Un backtick que termina
- * en "/" se expande a todos los archivos bajo esa carpeta.
- * Validar contra el árbol real evita que el manifiesto haga leer cualquier cosa.
+ * Paths mentioned in backticks that exist in the repo. A backtick path ending
+ * in "/" expands to every file under that folder.
+ * Validating against the real tree keeps the manifest from making anything readable.
  */
 export function parseCompliaPaths(md: string, repoPaths: string[]): string[] {
   const known = new Set(repoPaths)
@@ -24,32 +24,33 @@ export function parseCompliaPaths(md: string, repoPaths: string[]): string[] {
   return [...found]
 }
 
-const GENERATE_SYSTEM = `Escribes el COMPLIA.md de un repositorio: el archivo que le dice a un
-agente de cumplimiento normativo colombiano qué mirar cuando llegue una norma nueva.
+const GENERATE_SYSTEM = `You write a repository's COMPLIA.md: the file that tells a
+Colombian regulatory-compliance agent what to look at when a new norm arrives.
 
-Responde SOLO el markdown del archivo, sin explicaciones ni bloques de código alrededor.
-Estructura:
+Respond with ONLY the file's markdown, no explanations or surrounding code blocks.
+Structure (keep the section headings below verbatim, in Spanish, since this file is read by
+the client's team):
 
 # COMPLIA.md
 
-Una o dos frases: qué hace este sistema y qué normativa lo toca (facturación DIAN,
-protección de datos SIC, reportes SFC, etc.).
+One or two sentences: what this system does and which regulation touches it (DIAN invoicing,
+SIC data protection, SFC reporting, etc.).
 
 ## Archivos relevantes
 
-Lista cada archivo que un cambio normativo podría tocar, con su ruta EXACTA entre
-backticks tal como aparece en el repo, seguida de qué hace y qué obligación cubre hoy.
-Ordena de más a menos probable. Máximo 12. Ignora configs, lockfiles y tests.
+List every file a regulatory change could touch, with its EXACT path in
+backticks as it appears in the repo, followed by what it does and which obligation it covers
+today. Order from most to least likely. Max 12. Ignore configs, lockfiles, and tests.
 
 ## Fuera de alcance
 
-Rutas entre backticks que el agente NO debe modificar, con el motivo.
+Paths in backticks that the agent must NOT modify, with the reason.
 
 ## Notas para el revisor
 
-Qué mirar con lupa en un PR generado automáticamente.`
+What to scrutinize in an automatically generated PR.`
 
-/** Genera el contenido de COMPLIA.md a partir de los archivos del repo. */
+/** Generates the content of COMPLIA.md from the repo's files. */
 export async function generateCompliaMd(
   repo: string,
   files: { path: string; content: string }[],
@@ -62,12 +63,12 @@ export async function generateCompliaMd(
       {
         role: 'user',
         content:
-          `REPOSITORIO: ${repo}\n\nARCHIVOS:\n` +
+          `REPOSITORY: ${repo}\n\nFILES:\n` +
           files.map((f) => `=== ${f.path} ===\n${f.content.slice(0, 6000)}`).join('\n\n'),
       },
     ],
   })
   const text = msg.content.find((b) => b.type === 'text')
-  if (!text || text.type !== 'text' || !text.text.trim()) throw new Error('el modelo no devolvió COMPLIA.md')
+  if (!text || text.type !== 'text' || !text.text.trim()) throw new Error('the model did not return a COMPLIA.md')
   return text.text.trim()
 }
