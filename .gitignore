@@ -36,6 +36,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# skills fetched locally by `skills add` / `clerk init` (reference docs, not source)
+/.agents/
+/.claude/skills/
+/skills-lock.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
