@@ -27,6 +27,7 @@ create table companies (
   channels jsonb not null default '[]',    -- [{type, min_severity?, config}] — ver ChannelConfig en types.ts
   github_repo text,                        -- 'owner/repo' (PRO)
   reviewer_github text,                    -- username del Tech Lead revisor (PRO)
+  github_installation_id bigint,           -- instalación de la GitHub App; null = fallback a GITHUB_TOKEN (PRO)
   created_at timestamptz default now()
 );
 

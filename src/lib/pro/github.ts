@@ -1,11 +1,8 @@
-import { Octokit } from 'octokit'
 import { z } from 'zod'
 import { anthropic, MODEL } from '@/lib/llm'
 import type { Obligation } from '@/lib/types'
 import { COMPLIA_FILENAMES, parseCompliaPaths } from './complia-md'
-
-const octokit = () => new Octokit({ auth: process.env.GITHUB_TOKEN })
-type Gh = ReturnType<typeof octokit>
+import { octokitFor, type Gh } from './octokit'
 
 const ProposalSchema = z.object({
   changes: z.array(z.object({ path: z.string().min(1), content: z.string() })),
@@ -101,6 +98,7 @@ async function proposeChanges(
 
 export async function openCompliancePR(args: {
   repo: string
+  installationId: number | null
   reviewer: string | null
   normTitle: string
   obligations: Obligation[]
@@ -108,7 +106,7 @@ export async function openCompliancePR(args: {
 }): Promise<string> {
   const [owner, repo] = args.repo.split('/')
   if (!owner || !repo) throw new Error(`repo inválido: "${args.repo}" (se espera owner/nombre)`)
-  const gh = octokit()
+  const gh = await octokitFor(args.installationId)
 
   // 1. Elegir y leer archivos: manda COMPLIA.md si existe; si no, filtro por extensión
   const repoPaths = await listRepoPaths(gh, owner, repo)

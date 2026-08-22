@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
   try {
     const prUrl = await openCompliancePR({
       repo: alert.companies.github_repo,
+      installationId: alert.companies.github_installation_id,
       reviewer: alert.companies.reviewer_github,
       normTitle: alert.norms.title,
       obligations: alert.norms.obligations,
