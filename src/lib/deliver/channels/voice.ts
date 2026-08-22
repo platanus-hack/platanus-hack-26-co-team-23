@@ -15,6 +15,10 @@ export const voice: ChannelAdapter = {
           norm_title: payload.norm_title,
           impact: payload.impact,
           recommendation: payload.recommendation,
+          // Extra context when the alert has a brief. Unused variables are ignored by
+          // the agent, so this stays safe for prompts that don't reference them.
+          si_no_haces_nada: payload.brief?.si_no_haces_nada ?? '',
+          plazo: payload.brief?.plazo ?? '',
         },
       }),
     })
