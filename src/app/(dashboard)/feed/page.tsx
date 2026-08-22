@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { Alert, Norm } from "@/lib/types";
+import { sourceLine } from "@/lib/sources";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -114,10 +115,12 @@ export default async function FeedPage() {
                     {alert.norm?.title || "Norma sin título"}
                   </CardTitle>
                   <CardDescription className="mt-1">
-                    {alert.norm?.issuer && (
-                      <>
-                        Emitida por: <span className="text-foreground font-medium">{alert.norm.issuer}</span>
-                      </>
+                    Fuente:{" "}
+                    <span className="text-foreground font-medium">
+                      {sourceLine(alert.norm?.issuer, alert.norm?.source)}
+                    </span>
+                    {alert.norm?.published_at && (
+                      <> · Publicada el {alert.norm.published_at}</>
                     )}
                   </CardDescription>
                 </div>

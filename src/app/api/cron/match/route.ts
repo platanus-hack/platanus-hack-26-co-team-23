@@ -78,6 +78,7 @@ async function handle(req: NextRequest) {
 
     const { delivered } = await deliverAlert(company.channels ?? [], {
       norm_title: norm.title, norm_url: norm.url, impact, recommendation,
+      norm_issuer: norm.issuer, norm_source: norm.source,
       severity: (norm.severity ?? 'low') as 'low' | 'medium' | 'high',
       brief,
       guide_url: alert ? guideUrl(alert.id) : null,
