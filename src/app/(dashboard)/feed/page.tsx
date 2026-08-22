@@ -37,7 +37,10 @@ export default async function FeedPage() {
       const admin = supabaseAdmin();
       const { data } = await admin
         .from("alerts")
-        .select("*, norms(*)")
+        // Alias to `norm`: PostgREST names the embedded relation after the table
+        // (`norms`), and the whole card reads `alert.norm` — without the alias every
+        // field came back undefined and the title fell back to "Norma sin título".
+        .select("*, norm:norms(*)")
         .eq("company_id", company.id)
         .order("created_at", { ascending: false });
 
