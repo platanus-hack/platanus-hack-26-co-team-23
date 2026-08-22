@@ -164,28 +164,61 @@ export async function openCompliancePR(args: {
     return { skipped: true, reason: motivo || 'la norma no obliga a cambiar este código' }
 
   // 3. Branch + commits + PR
+  return {
+    prUrl: await openPrWithChanges(gh, {
+      owner,
+      repo,
+      changes,
+      branchPrefix: 'complia/cumplimiento',
+      commitMessage: `fix: cumplimiento — ${args.normTitle.slice(0, 60)}`,
+      title: `[complAI] Cumplimiento: ${args.normTitle.slice(0, 80)}`,
+      body: pr_body,
+      reviewer: args.reviewer,
+    }),
+  }
+}
+
+/**
+ * Crea una rama, commitea los archivos y abre el PR en draft, pidiendo revisión.
+ * Es la parte común entre el PR de cumplimiento y el que añade el COMPLIA.md.
+ */
+export async function openPrWithChanges(
+  gh: Gh,
+  args: {
+    owner: string
+    repo: string
+    changes: { path: string; content: string }[]
+    branchPrefix: string
+    commitMessage: string
+    title: string
+    body: string
+    reviewer: string | null
+  },
+): Promise<string> {
+  const { owner, repo } = args
   const { data: repoInfo } = await gh.rest.repos.get({ owner, repo })
   const base = repoInfo.default_branch
   const { data: baseRef } = await gh.rest.git.getRef({ owner, repo, ref: `heads/${base}` })
-  const branch = `complia/cumplimiento-${Date.now()}`
+  const branch = `${args.branchPrefix}-${Date.now()}`
   await gh.rest.git.createRef({ owner, repo, ref: `refs/heads/${branch}`, sha: baseRef.object.sha })
-  for (const change of changes) {
-    const { data: current } = await gh.rest.repos.getContent({
-      owner,
-      repo,
-      path: change.path,
-      ref: branch,
-    })
+
+  for (const change of args.changes) {
+    // El archivo puede no existir todavía (COMPLIA.md nuevo): sin sha, se crea.
+    const sha = await gh.rest.repos
+      .getContent({ owner, repo, path: change.path, ref: branch })
+      .then((r) => ('sha' in r.data ? r.data.sha : undefined))
+      .catch(() => undefined)
     await gh.rest.repos.createOrUpdateFileContents({
       owner,
       repo,
       path: change.path,
       branch,
-      message: `fix: cumplimiento — ${args.normTitle.slice(0, 60)}`,
+      message: args.commitMessage,
       content: Buffer.from(change.content).toString('base64'),
-      sha: 'sha' in current ? current.sha : undefined,
+      sha,
     })
   }
+
   // Draft: el agente nunca mergea y el PR ni siquiera nace mergeable — hay que
   // marcarlo "ready for review" a mano después de revisarlo.
   const nuevoPr = {
@@ -193,8 +226,8 @@ export async function openCompliancePR(args: {
     repo,
     base,
     head: branch,
-    title: `[complAI] Cumplimiento: ${args.normTitle.slice(0, 80)}`,
-    body: `${pr_body}\n\n---\n🤖 PR generado por complAI. **Requiere revisión humana — nunca mergear sin aprobar.**`,
+    title: args.title,
+    body: `${args.body}\n\n---\n🤖 PR generado por complAI. **Requiere revisión humana — nunca mergear sin aprobar.**`,
   }
   const { data: pr } = await gh.rest.pulls
     .create({ ...nuevoPr, draft: true })
@@ -204,5 +237,5 @@ export async function openCompliancePR(args: {
     await gh.rest.pulls
       .requestReviewers({ owner, repo, pull_number: pr.number, reviewers: [args.reviewer] })
       .catch((e) => console.error('no se pudo asignar reviewer:', e))
-  return { prUrl: pr.html_url }
+  return pr.html_url
 }

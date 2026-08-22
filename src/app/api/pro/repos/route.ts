@@ -22,10 +22,12 @@ export async function GET(req: NextRequest) {
     .single()
   if (!company) return NextResponse.json({ error: 'empresa no encontrada' }, { status: 404 })
 
-  if (!company.github_installation_id)
-    return NextResponse.json({ connected: false, installUrl: buildInstallUrl(companyId) })
-
   try {
+    // Dentro del try: buildInstallUrl lanza si falta GITHUB_STATE_SECRET, y un 500
+    // sin cuerpo no dice qué env falta configurar en ese entorno de Vercel.
+    if (!company.github_installation_id)
+      return NextResponse.json({ connected: false, installUrl: buildInstallUrl(companyId) })
+
     const gh = await octokitFor(company.github_installation_id)
     const { data } = await gh.rest.apps.listReposAccessibleToInstallation()
     return NextResponse.json({
@@ -35,7 +37,7 @@ export async function GET(req: NextRequest) {
       manageUrl: buildInstallUrl(companyId),
     })
   } catch (e) {
-    console.error('listReposAccessibleToInstallation falló:', e)
+    console.error('GET /api/pro/repos falló:', e)
     return NextResponse.json({ error: (e as Error).message }, { status: 502 })
   }
 }
