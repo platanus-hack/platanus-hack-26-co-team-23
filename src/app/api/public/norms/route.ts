@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
-// API pública read-only: la superficie que consume el paquete npm complia-mcp.
+// API pública read-only: la superficie que consume el paquete npm complai-mcp.
 // Solo normas ya analizadas; las normas son datos públicos.
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)

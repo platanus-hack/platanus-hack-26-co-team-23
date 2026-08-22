@@ -1,10 +1,10 @@
-# Anteproyecto — CumplIA
+# Anteproyecto — complAI
 
 **Platanus Hack 2026 · Track: ACCESS · Equipo: Alejandro Castillo et al.**
 **One-liner:** *La normativa colombiana convertida en un agente que vigila la ley por tu empresa — y en el tier PRO, abre el PR que te pone en cumplimiento.*
 
-> Nombre decidido: **CumplIA** (cumplir + IA — *"para que tu empresa siempre CumplIA"*).
-> Paquete npm: `complia-mcp`.
+> Nombre decidido: **complAI** (comply + AI — *"tu empresa, siempre complAI-nt"*).
+> Paquete npm: `complai-mcp`.
 
 ---
 
@@ -17,7 +17,7 @@ no para software. El resultado: las empresas queman **5.237 horas/año** (más d
 de tiempo completo) en trámites y cumplimiento, y aun así **el 45% no se entera de los
 cambios legislativos de su sector** — y paga multas, o cierra.
 
-**CumplIA** ingesta la normativa colombiana diariamente (Diario Oficial + SUIN-Juriscol),
+**complAI** ingesta la normativa colombiana diariamente (Diario Oficial + SUIN-Juriscol),
 la estructura con IA, la cruza contra el **perfil de cada empresa cliente** (tipo de empresa,
 sector, obligaciones), y entrega:
 
@@ -120,14 +120,14 @@ unificado por sector.
      cuando de verdad importa).
    - Integración de repos (PRO): GitHub App con permisos de lectura + creación de PRs.
    - **Revisores responsables (PRO):** por área normativa se asigna un dueño
-     (p. ej. "protección de datos → Tech Lead X"); todo PR de CumplIA llega con ese
-     revisor pre-asignado. El humano siempre aprueba — CumplIA propone, nunca mergea.
+     (p. ej. "protección de datos → Tech Lead X"); todo PR de complAI llega con ese
+     revisor pre-asignado. El humano siempre aprueba — complAI propone, nunca mergea.
 3. **Feed de normas** filtrado por su perfil, con el análisis de impacto de cada una.
 
 ### 3.3 Por qué el humano-en-el-loop del PRO importa
 
 El PR nunca se auto-mergea: el revisor designado es el control de calidad y el
-responsable de cumplimiento ante la empresa. Esto convierte a CumplIA en herramienta del
+responsable de cumplimiento ante la empresa. Esto convierte a complAI en herramienta del
 compliance officer / Tech Lead, no en su reemplazo — clave para la venta B2B y para el
 riesgo reputacional (una IA que "cambia tu código por ley" sin humano asusta; una que
 "te trae el PR listo para revisar" vende).
@@ -251,7 +251,7 @@ construcción, laboral) donde el valor es enterarse a tiempo, sin componente de 
 - PRO demo: GitHub App con un repo de ejemplo → agente (Claude Agent SDK) analiza el repo
   contra la norma estructurada → abre PR → asigna reviewer.
 - Bonus ACCESS: exponer el backend como **MCP server** público de solo-lectura, en dos
-  superficies: endpoint HTTP (`/api/mcp`) y **paquete npm instalable** (`npx complia-mcp`)
+  superficies: endpoint HTTP (`/api/mcp`) y **paquete npm instalable** (`npx complai-mcp`)
   que cualquier agente agrega en una línea — sin credenciales, solo consume la API pública.
 
 ---
@@ -295,7 +295,7 @@ código, para que el flujo PRO luzca determinista en vivo.
 | Riesgo | Mitigación |
 |---|---|
 | Alucinación en el análisis de impacto | Toda alerta cita la norma fuente con link + texto original; el análisis es "borrador para el responsable", nunca consejo legal definitivo (disclaimer) |
-| PR incorrecto en PRO | Humano-en-el-loop obligatorio: reviewer asignado, CumplIA jamás mergea |
+| PR incorrecto en PRO | Humano-en-el-loop obligatorio: reviewer asignado, complAI jamás mergea |
 | Responsabilidad legal ("no me avisaste") | ToS: herramienta de monitoreo, no asesoría jurídica; complementa, no reemplaza, al abogado |
 | Calidad/latencia de las fuentes públicas | Doble fuente (Diario Oficial + SUIN) con reconciliación; alertas de "fuente caída" |
 | El clasificador de sectores se equivoca | Feedback loop en la alerta ("¿te aplicaba? 👍👎") — mejora el matching y da métrica de precisión para inversionistas |
@@ -308,7 +308,7 @@ código, para que el flujo PRO luzca determinista en vivo.
 
 > En Colombia el Estado publica **4 normas nuevas cada día**. Las empresas gastan **más de
 > dos empleados de tiempo completo** en cumplimiento y aun así **el 45% no se entera** de
-> los cambios que le aplican — y paga multas, o cierra. **CumplIA** convierte el Diario
+> los cambios que le aplican — y paga multas, o cierra. **complAI** convierte el Diario
 > Oficial en un agente: monitorea la normativa, te avisa en tu Slack qué cambió y cómo te
 > afecta, y en el plan PRO analiza tu código y **te abre el Pull Request que te pone en
 > cumplimiento**, listo para que tu Tech Lead lo apruebe. Empezamos por Colombia; la

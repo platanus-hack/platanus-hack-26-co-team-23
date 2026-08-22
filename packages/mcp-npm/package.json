@@ -1,9 +1,9 @@
 {
-  "name": "complia-mcp",
-  "version": "0.1.0",
-  "description": "MCP server de CumplIA — normativa colombiana estructurada (SUIN, DIAN, Superfinanciera, SIC), consultable por agentes de IA",
+  "name": "complai-mcp",
+  "version": "0.2.0",
+  "description": "MCP server de complAI — normativa colombiana estructurada (SUIN, DIAN, Superfinanciera, SIC), consultable por agentes de IA",
   "type": "module",
-  "bin": { "complia-mcp": "./server.mjs" },
+  "bin": { "complai-mcp": "./server.mjs" },
   "files": ["server.mjs", "README.md"],
   "engines": { "node": ">=20" },
   "license": "MIT",
@@ -13,7 +13,7 @@
     "url": "https://github.com/ComplAI-Crew/comply.git",
     "directory": "packages/mcp-npm"
   },
-  "homepage": "https://complia-weld.vercel.app",
+  "homepage": "https://complai-co.vercel.app",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
     "zod": "^3.23.0"

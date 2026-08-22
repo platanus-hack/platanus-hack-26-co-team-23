@@ -1,13 +1,13 @@
-# CumplIA — contexto para agentes
+# complAI — contexto para agentes
 
 > Platanus Hack 2026 · Track ACCESS · team-23. Producto: la normativa colombiana convertida
 > en agente — ingesta multi-fuente, alertas multicanal personalizadas (Plus), PRs de
-> cumplimiento con revisor humano (PRO), y MCP server (HTTP + npm `complia-mcp`).
+> cumplimiento con revisor humano (PRO), y MCP server (HTTP + npm `complai-mcp`).
 
 ## Lee esto primero
 
 1. **Plan ejecutable (fuente de verdad del QUÉ y CÓMO):**
-   [`docs/superpowers/plans/2026-08-22-complia.md`](./docs/superpowers/plans/2026-08-22-complia.md)
+   [`docs/superpowers/plans/2026-08-22-complai.md`](./docs/superpowers/plans/2026-08-22-complai.md)
    — Task 0 + tracks por miembro, con código completo, tests e **Interfaces** por tarea.
    Ejecútalo con `superpowers:executing-plans` (o subagent-driven), tarea por tarea, marcando checkboxes.
 2. **Anteproyecto (pitch, datos, fuentes):** [`docs/ANTEPROYECTO.md`](./docs/ANTEPROYECTO.md)
@@ -59,7 +59,7 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/c
 - [ ] Proyecto Supabase + Google OAuth (Task 0 Step 2)
 - [ ] Cuenta Kapso (WhatsApp) + número — API key en env (Task 5b)
 - [ ] Cuenta Retell (voz) + agente con el prompt del plan + número (Task 5b)
-- [ ] Verificar `complia-mcp` libre en npm (`npm view complia-mcp` → 404 = libre)
+- [ ] Verificar `complai-mcp` libre en npm (`npm view complai-mcp` → 404 = libre)
 - [ ] Repo demo `facturador-demo` con código que "incumple" (Task 7)
 - [ ] Antes de entregar: `platanus-hack-project.jsonc` + `project-description.md` + logo
   (requisitos del README de Platanus — escribir el readme final a mano)
