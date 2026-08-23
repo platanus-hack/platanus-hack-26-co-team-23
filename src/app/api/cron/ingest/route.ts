@@ -1,82 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase/admin'
-import { ingestAll, SOURCES } from '@/lib/ingest/ingest'
-import { analyzeNorm } from '@/lib/ingest/analyze'
-import { emitProgress } from '@/lib/ingest/progress'
+import { runIngest } from '@/lib/ingest/run'
 
 export const maxDuration = 300
 
-/** Analysis budget per run: one LLM call each, in batches. */
-const MAX_ANALYZED = 40
-const CONCURRENCY = 5
-
 // POST for manual curl; GET for Vercel Cron (invokes via GET with the
 // Authorization: Bearer $CRON_SECRET header when CRON_SECRET is set).
+// ?limit=N — demo mode: bring only ~N per source. Omit it → full cron behaviour.
 async function handle(req: NextRequest) {
   if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`)
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
-  // Optional ?limit=N — demo mode: bring only ~N per source (1 page). `limit` is PER SOURCE,
-  // so a run ingests up to N × SOURCES norms; the analysis budget has to match that total or
-  // most freshly-ingested norms stay unanalyzed (and the match never alerts on them). Bounded
-  // by MAX_ANALYZED to keep the LLM cost/time of a manual run sane. Omit it → cron behaves as before.
-  const url = new URL(req.url)
-  const limitParam = Number(url.searchParams.get('limit'))
-  const demo = Number.isFinite(limitParam) && limitParam > 0
-  const analysisBudget = demo ? Math.min(limitParam * SOURCES.length, MAX_ANALYZED) : MAX_ANALYZED
+  const limitParam = Number(new URL(req.url).searchParams.get('limit'))
+  const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : null
 
-  // ?run=<id> — the admin panel passes one so the fetch/analyze phases can be broadcast back
-  // to its progress bar. Absent (e.g. the cron), progress emission is a no-op.
-  const runId = url.searchParams.get('run')
-  const report = (p: Parameters<typeof emitProgress>[1]) => (runId ? emitProgress(runId, p) : undefined)
-
-  // Per source: 15 rows per page, up to DEFAULT_PAGES (8). Bounded sources hand back
-  // everything on page 0 and an empty page after that, so they stop on their own.
-  const sources = demo
-    ? await ingestAll(Math.min(limitParam, 25), 1, (done, total, source) =>
-        report({ phase: 'fetch', done, total, source }),
-      )
-    : await ingestAll(15)
-  const db = supabaseAdmin()
-
-  // Paginating brings many more norms per run, so the analysis budget went up and now
-  // runs in concurrent batches — one at a time couldn't keep up and left a backlog
-  // that took six runs to drain.
-  // Newest-published first: without an order the budget could be spent on stale backlog rows
-  // instead of the norms this run just brought in, so a demo run looked like it did nothing.
-  const { data: pending } = await db
-    .from('norms')
-    .select('*')
-    .is('analyzed_at', null)
-    .order('published_at', { ascending: false, nullsFirst: false })
-    .limit(analysisBudget)
-
-  const toAnalyze = pending ?? []
-  await report({ phase: 'analyze', done: 0, total: toAnalyze.length })
-
-  let analyzed = 0
-  for (let i = 0; i < toAnalyze.length; i += CONCURRENCY) {
-    const batch = toAnalyze.slice(i, i + CONCURRENCY)
-    const results = await Promise.allSettled(
-      batch.map(async (norm) => {
-        const a = await analyzeNorm(norm.title, norm.raw_text ?? norm.title)
-        await db.from('norms').update({ ...a, analyzed_at: new Date().toISOString() }).eq('id', norm.id)
-      }),
-    )
-    results.forEach((r, j) => {
-      if (r.status === 'fulfilled') analyzed++
-      else console.error(`analyze failed for ${batch[j].external_id}:`, r.reason)
-    })
-    await report({ phase: 'analyze', done: Math.min(i + CONCURRENCY, toAnalyze.length), total: toAnalyze.length })
-  }
-
-  const nuevas = Object.values(sources).reduce((n, s) => n + s.nuevas, 0)
-  const { count: pendientes } = await db
-    .from('norms')
-    .select('id', { count: 'exact', head: true })
-    .is('analyzed_at', null)
-  await report({ phase: 'done', nuevas, analyzed, pendientes: pendientes ?? 0 })
-  return NextResponse.json({ nuevas, analyzed, pendientes, sources })
+  const result = await runIngest(limit)
+  return NextResponse.json(result)
 }
 
 export { handle as GET, handle as POST }

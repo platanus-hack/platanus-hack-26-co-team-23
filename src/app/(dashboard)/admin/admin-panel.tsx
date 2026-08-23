@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { runManualUpdate, runManualNotification } from "./actions";
+import { runManualNotification } from "./actions";
 import { sanitizeCount, isValidCount, clampCount, MIN, MAX, SOURCES } from "./count";
-// Type-only: erased at compile time, so the server-side broadcast helper never reaches the client bundle.
-import type { IngestProgress } from "@/lib/ingest/progress";
+// Type-only: erased at compile time, so nothing from the server module reaches the client bundle.
+import type { IngestProgress } from "@/lib/ingest/run";
 
 // Fetch phase fills the first half of the bar, analyze the second — one smooth 0→100 bar.
 function overallPct(p: IngestProgress): number {
@@ -33,45 +33,55 @@ export function AdminPanel() {
   const [pending, startTransition] = useTransition();
   const [action, setAction] = useState<"update" | "notify" | null>(null);
   const [progress, setProgress] = useState<IngestProgress | null>(null);
-  const esRef = useRef<EventSource | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // Close any live stream if the admin navigates away mid-ingest.
-  useEffect(() => () => esRef.current?.close(), []);
+  // Cancel the in-flight ingest stream if the admin navigates away mid-run.
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   const n = Number(maxNews);
   const valid = isValidCount(maxNews);
   const ingesting = progress != null && progress.phase !== "done" && progress.phase !== "error";
 
-  const onUpdate = () => {
+  // Streams the ingest from /api/admin/ingest (NDJSON, one progress line per step) and drives the
+  // bar off it. The UI stays responsive — only this button locks — but closing the tab cancels it.
+  const onUpdate = async () => {
     if (!valid || ingesting) return;
-    setAction("update");
     // Optimistic first frame so the bar appears the instant the button is pressed.
     setProgress({ phase: "fetch", done: 0, total: SOURCES, source: "" });
 
-    const runId = crypto.randomUUID();
-    esRef.current?.close();
-    const es = new EventSource(`/api/ingest/progress?run=${runId}`);
-    esRef.current = es;
-    es.addEventListener("progress", (e) => {
-      const p = JSON.parse((e as MessageEvent).data) as IngestProgress;
-      setProgress(p);
-      if (p.phase === "done") {
-        es.close();
-        toast.success("Ingesta completa", {
-          description: `${p.nuevas} normas nuevas · ${p.analyzed} analizadas. Ya puedes pulsar 'Ejecutar notificación'.`,
-        });
-      }
-    });
+    const ac = new AbortController();
+    abortRef.current = ac;
+    try {
+      const res = await fetch(`/api/admin/ingest?limit=${n}`, { signal: ac.signal });
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
-    startTransition(async () => {
-      const r = await runManualUpdate(n, runId);
-      if (!r.ok) {
-        es.close();
-        setProgress(null);
-        toast.error(`No se pudo iniciar: ${r.error}`);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buffer.indexOf("\n")) >= 0) {
+          const line = buffer.slice(0, nl).trim();
+          buffer = buffer.slice(nl + 1);
+          if (!line) continue;
+          const p = JSON.parse(line) as IngestProgress;
+          setProgress(p);
+          if (p.phase === "done")
+            toast.success("Ingesta completa", {
+              description: `${p.nuevas} normas nuevas · ${p.analyzed} analizadas. Ya puedes pulsar 'Ejecutar notificación'.`,
+            });
+          if (p.phase === "error") toast.error(`Error en la ingesta: ${p.message}`);
+        }
       }
-      setAction(null);
-    });
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") {
+        toast.error(`No se pudo ejecutar la ingesta: ${(e as Error).message}`);
+        setProgress(null);
+      }
+    }
   };
 
   const onNotify = () => {
@@ -103,7 +113,7 @@ export function AdminPanel() {
               value={maxNews}
               onChange={(e) => setMaxNews(sanitizeCount(e.target.value))}
               onBlur={() => setMaxNews(clampCount(maxNews))}
-              disabled={pending}
+              disabled={ingesting}
               aria-invalid={!valid}
             />
             <p className="text-xs text-muted-foreground">
@@ -112,8 +122,8 @@ export function AdminPanel() {
                 : `Escribe un número entre ${MIN} y ${MAX}.`}
             </p>
           </div>
-          <Button onClick={onUpdate} disabled={pending || !valid || ingesting} className="w-full">
-            {ingesting ? "En progreso…" : pending && action === "update" ? "Iniciando…" : "Ejecutar ingesta"}
+          <Button onClick={onUpdate} disabled={!valid || ingesting} className="w-full">
+            {ingesting ? "En progreso…" : "Ejecutar ingesta"}
           </Button>
 
           {progress && (
