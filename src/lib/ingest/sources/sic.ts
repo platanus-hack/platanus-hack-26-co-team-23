@@ -61,13 +61,18 @@ export function parseSicRows(html: string, norm_type: string, limit: number): So
     if (cells.length < 5 || !cells[2]) continue
     const [, topic, name, description, date] = cells
     const pdf = row.match(/href="(https?:\/\/[^"]+\.pdf[^"]*)"/i)?.[1] ?? null
+    const published_at = parseSpanishDate(date ?? '')
+    // The name alone is NOT unique: the SIC restarts its numbering every year, so
+    // "Circular 03" exists in almost every one of them and the ids collapsed onto a single
+    // row — the upsert then kept whichever page arrived last and dropped the rest. The date
+    // also separates the long titles that the 60-char slug truncates to the same string.
     norms.push({
-      external_id: `sic-${slug(name)}`,
+      external_id: `sic-${slug(name)}-${published_at ?? 'sin-fecha'}`,
       source: 'sic',
       title: `${name} (SIC)${description ? ` — ${description.slice(0, 90)}` : ''}`,
       issuer: 'SIC',
       norm_type,
-      published_at: parseSpanishDate(date ?? ''),
+      published_at,
       url: pdf,
       // listing metadata; the full text lives in the PDF (post-hackathon stretch)
       raw_text: `${name} — SIC. Tema: ${topic}. ${description}. Fecha: ${date}.`,

@@ -93,16 +93,40 @@ Medido el 2026-08-22 contra las fuentes en vivo:
   peticiones, porque el corte por huella ya no necesita una segunda descarga completa para
   descubrir que la fuente se repite. En DIAN eso son ~8 s por corrida.
 
-Verificado en vivo contra las siete fuentes, tres páginas cada una, sin escribir en la base:
+### Colisión de `external_id` — bug destapado por la paginación
+
+Al recorrer 8 páginas apareció un problema que con una sola página casi no se veía: el
+`external_id` de dos fuentes **no era único**, y como el upsert va por
+`onConflict: 'external_id'`, las normas se pisaban entre sí y se perdían en silencio.
+
+- **SIC** — el id era solo el nombre (`sic-circular-03`). La SIC reinicia la numeración cada
+  año, así que la Circular 03 de tres años distintos competía por una misma fila. 9
+  colisiones en 128 filas. También colapsaban títulos largos distintos que el slug recorta a
+  60 caracteres. **Arreglado**: la fecha entra en el id.
+- **legalize** — el id era el trailer `Source-Id`, que el comentario describía como "id de la
+  disposición". No lo es: identifica la **norma**, así que las reformas al art. 296 y al art.
+  58 de la Ley 599 de 2000 compartían id. 17 colisiones en 78 filas. **Arreglado**: el id es
+  el sha del commit, que es uno por reforma y estable entre corridas.
+
+**Ojo al desplegar**: el cambio de formato deja huérfanas las filas ya cargadas (16 de `sic`
+y 15 de `legalize`), que quedarán duplicadas con las nuevas. Hay que borrarlas:
+`delete from norms where source in ('sic','legalize');` — se vuelven a ingestar en la
+siguiente corrida.
+
+### Verificación final
+
+Las siete fuentes, 8 páginas cada una, sin escribir en la base:
 
 ```
-suin                   p0:15(+15)  p1:15(+15)  p2:15(+15)   únicos=45
-dian                   p0:28(+28)  p1:0(+0)                 únicos=28
-superfinanciera        p0:28(+28)  p1:0(+0)                 únicos=28
-sic                    p0:20(+20)  p1:20(+20)  p2:20(+20)   únicos=60
-legalize               p0:11(+11)  p1:15(+14)  p2:15(+11)   únicos=35
-corte-constitucional   p0:15(+15)  p1:15(+15)  p2:15(+15)   únicos=45
-croma                  p0:14(+14)  p1:0(+0)                 únicos=14
+suin                  +15 +15 +15 +14 +15 +15 +15 +15  únicos=119  colisiones=0  2.1s
+dian                  +28                              únicos= 28  colisiones=0  4.3s  pág 1 vacía
+superfinanciera       +28                              únicos= 28  colisiones=0  1.8s  pág 1 vacía
+sic                   +20 +20 +20 +20 +20 +20 +20 +20  únicos=157  colisiones=0  2.2s
+legalize              +11 +15 +15 +15 +14 +15 +15 +15  únicos=115  colisiones=0  2.0s
+corte-constitucional  +15 +15 +15 +15 +15 +15 +15 +15  únicos=120  colisiones=0  2.2s
+croma                 +14                              únicos= 14  colisiones=0  0.5s  pág 1 vacía
+
+TOTAL: 581 normas distintas por corrida (antes: ~210), 15 s contra ~50 s
 ```
 
 El contrato está fijado en `src/lib/ingest/pagination.test.ts`, para que un adaptador nuevo
@@ -121,4 +145,6 @@ orden). **No hay que tocarlo.**
 
 233 normas tras la corrida con el corte por huella corregido (129 → 233; SUIN aportó las
 104 nuevas), todas analizadas por el LLM. Con la paginación de las seis fuentes arreglada,
-una corrida del cron (`ingestAll(15)`, 8 páginas) recorre ~560 normas en vez de ~230.
+una corrida del cron (`ingestAll(15)`, 8 páginas) recorre 581 normas distintas en vez de
+~210, y tarda menos (15 s contra ~50 s) porque las fuentes acotadas ya no se descargan dos
+veces.

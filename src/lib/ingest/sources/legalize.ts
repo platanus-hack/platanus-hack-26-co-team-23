@@ -18,7 +18,14 @@ const COMMIT_MESSAGE_TRAILERS = {
   article: /\nArtículos afectados: ([\s\S]*?)\n\n/,
 } as const
 
-export function parseLegalizeCommit(message: string): SourceNorm | null {
+/**
+ * `sha` is what makes the row unique. The `Source-Id` trailer looked like a per-reform id
+ * and the code treated it as one, but it identifies the NORM: every reform to Ley 599 of
+ * 2000 carries the same one, so reforms to art. 296 and to art. 58 collapsed onto a single
+ * row and the upsert kept only the last page's version. One commit is one reform, and the
+ * sha is stable across runs, so it is the honest key.
+ */
+export function parseLegalizeCommit(message: string, sha: string): SourceNorm | null {
   if (!message.startsWith('[reform]')) return null // skip bootstrap/fix-pipeline commits
 
   const normId = message.match(COMMIT_MESSAGE_TRAILERS.normId)?.[1]
@@ -32,7 +39,7 @@ export function parseLegalizeCommit(message: string): SourceNorm | null {
   const [normType] = normId.split('-')
 
   return {
-    external_id: `legalize-${sourceId}`, // the disposition id: stable per article-version reform
+    external_id: `legalize-${sha.slice(0, 12)}`,
     source: 'legalize',
     title,
     issuer: null, // this dataset doesn't carry the issuing entity
@@ -43,7 +50,7 @@ export function parseLegalizeCommit(message: string): SourceNorm | null {
   }
 }
 
-type GithubCommit = { commit: { message: string } }
+type GithubCommit = { sha: string; commit: { message: string } }
 
 export const legalize: SourceAdapter = {
   id: 'legalize',
@@ -65,7 +72,7 @@ export const legalize: SourceAdapter = {
     const commits = (await res.json()) as GithubCommit[]
 
     return commits
-      .map((c) => parseLegalizeCommit(c.commit.message))
+      .map((c) => parseLegalizeCommit(c.commit.message, c.sha))
       .filter((n): n is SourceNorm => n !== null)
       // Defensive: sort by the real reform date rather than trusting the API's commit order.
       // Sorted within the page only — no .slice(), or the trimmed rows would be lost for good.
