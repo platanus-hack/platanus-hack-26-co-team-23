@@ -15,8 +15,8 @@ async function handle(req: NextRequest) {
   if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`)
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
-  // Per source: 15 rows per page, up to 4 pages. A source that can't paginate stops
-  // after the first page on its own.
+  // Per source: 15 rows per page, up to DEFAULT_PAGES (8). Bounded sources hand back
+  // everything on page 0 and an empty page after that, so they stop on their own.
   const sources = await ingestAll(15)
   const db = supabaseAdmin()
 
