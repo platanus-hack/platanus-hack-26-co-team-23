@@ -79,11 +79,15 @@ export function parseSicRows(html: string, norm_type: string, limit: number): So
 
 export const sic: SourceAdapter = {
   id: 'sic',
-  async fetch(limit = 10) {
+  async fetch(limit = 10, offset = 0) {
+    // The Drupal listing paginates with ?page=N (0-based) and each page holds 10 rows.
+    // `limit` is a per-page cap, not a budget to split across listings: splitting it
+    // (ceil(limit / 2) = 8) silently dropped 2 of every page's 10 rows.
+    const page = Math.floor(offset / limit)
     const norms: SourceNorm[] = []
     for (const listing of LISTINGS) {
-      const html = await (await sicFetch(listing.url)).text()
-      norms.push(...parseSicRows(html, listing.norm_type, Math.ceil(limit / LISTINGS.length)))
+      const html = await (await sicFetch(`${listing.url}&page=${page}`)).text()
+      norms.push(...parseSicRows(html, listing.norm_type, limit))
     }
     return norms
   },

@@ -80,14 +80,37 @@ Medido el 2026-08-22 contra las fuentes en vivo:
 | **dian** | 15 | **28** | Mismo caso: descarga hasta 60 candidatos, encuentra 28 y recorta a 15. El techo real (28) lo pone el documento semilla, no el código. |
 | **croma** | 14 | — | **No es un bug**: no pagina a propósito por la cuota de 100 req/día, y su corpus de Consejo de Estado está congelado en feb-2022. Dejar como está. |
 
-Dos observaciones que salieron del mismo repaso:
+**Arreglado** (commit siguiente a esta auditoría). Dos estrategias según la fuente:
 
-- **Cada fuente que no pagina cuesta una descarga completa de más por corrida.** El corte
-  por huella necesita dos páginas para concluir que son iguales, así que DIAN vuelve a
-  bajar sus 28 HTML (~8 s) solo para descubrirlo. Un `paginates: boolean` en `SourceAdapter`
-  lo evita sin tocar la lógica de corte.
-- **Comentario desactualizado en `sic.ts`**: apunta a `src/lib/ingest/certs/globalsign-rsa-ov-2018.pem`,
-  que no existe en el repo. El certificado está embebido en el propio archivo.
+- **Las que sí paginan** (`corte-constitucional`, `sic`, `legalize`) ahora reenvían el
+  `offset`: `$offset` en Socrata, `?page=N` en el Drupal de la SIC, `page=N` 1-based en la
+  API de commits de GitHub. En `legalize` además se igualó `per_page` a `limit`: el buffer
+  de sobre-descarga con recorte cliente dejaba huecos, porque la página siguiente arrancaba
+  después de los commits recortados.
+- **Las acotadas** (`dian`, `superfinanciera`, `croma`) devuelven **todo lo que tienen en la
+  página 0** y un array vacío después. No solo traen más que antes (28 en vez de 15 las dos
+  primeras, porque el `.slice(0, limit)` botaba lo ya descargado): también hacen *menos*
+  peticiones, porque el corte por huella ya no necesita una segunda descarga completa para
+  descubrir que la fuente se repite. En DIAN eso son ~8 s por corrida.
+
+Verificado en vivo contra las siete fuentes, tres páginas cada una, sin escribir en la base:
+
+```
+suin                   p0:15(+15)  p1:15(+15)  p2:15(+15)   únicos=45
+dian                   p0:28(+28)  p1:0(+0)                 únicos=28
+superfinanciera        p0:28(+28)  p1:0(+0)                 únicos=28
+sic                    p0:20(+20)  p1:20(+20)  p2:20(+20)   únicos=60
+legalize               p0:11(+11)  p1:15(+14)  p2:15(+11)   únicos=35
+corte-constitucional   p0:15(+15)  p1:15(+15)  p2:15(+15)   únicos=45
+croma                  p0:14(+14)  p1:0(+0)                 únicos=14
+```
+
+El contrato está fijado en `src/lib/ingest/pagination.test.ts`, para que un adaptador nuevo
+que se coma el `offset` falle en CI en vez de estancar el corpus en silencio.
+
+Pendiente menor: el comentario de `sic.ts` apunta a
+`src/lib/ingest/certs/globalsign-rsa-ov-2018.pem`, que no existe; el certificado está
+embebido en el propio archivo.
 
 Descartado tras medirlo: sospeché que el `$order=a_o DESC` de SUIN, al no tener desempate,
 haría que Socrata devolviera filas repetidas o saltadas entre páginas. Cuatro páginas con y
@@ -97,5 +120,5 @@ orden). **No hay que tocarlo.**
 ## Números del corpus
 
 233 normas tras la corrida con el corte por huella corregido (129 → 233; SUIN aportó las
-104 nuevas), todas analizadas por el LLM. Cerrar la deuda de la tabla de arriba —
-sobre todo Corte Constitucional — pone el corpus en otro orden de magnitud.
+104 nuevas), todas analizadas por el LLM. Con la paginación de las seis fuentes arreglada,
+una corrida del cron (`ingestAll(15)`, 8 páginas) recorre ~560 normas en vez de ~230.
