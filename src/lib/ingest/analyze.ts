@@ -8,6 +8,10 @@ const AnalysisSchema = z.object({
   company_types: z.array(z.string()),
   obligations: z.array(z.object({ action: z.string(), deadline: z.string().nullable() })),
   severity: z.enum(['info', 'low', 'medium', 'high']),
+  // Some sources lose accented bytes (they arrive as "�"). Rather than rewrite the title (the model
+  // tends to restructure it), the model returns ONE correct letter per "�", in order; the caller
+  // splices them back in — structure-safe and works for any word (no dictionary). See run.ts.
+  title_accents: z.array(z.string()).optional(),
 })
 export type NormAnalysis = z.infer<typeof AnalysisSchema>
 
@@ -20,7 +24,12 @@ export function parseAnalysis(text: string): NormAnalysis {
 
 const SYSTEM = `You are a Colombian regulatory analyst. Analyze the norm and record the result
 with the tool. Be conservative: if the norm doesn't affect companies, sectors=[] and severity=info.
-severity=high only if it creates obligations with a penalty.`
+severity=high only if it creates obligations with a penalty.
+
+title_accents: the TITLE may contain "�" where an accented letter was lost. For EACH "�", reading
+left to right, output the single correct Spanish character it should be (usually á/é/í/ó/ú/ñ, e.g.
+"COMISI�N" → "Ó"). Return them as an array in that exact order, one entry per "�". Return [] if the
+title has no "�". Do NOT return the whole title — only the missing letters.`
 
 // Forced tool use: the model can only respond with the schema's JSON — zero fragile parsing.
 const ANALYSIS_TOOL = {
@@ -29,6 +38,7 @@ const ANALYSIS_TOOL = {
   input_schema: {
     type: 'object' as const,
     properties: {
+      title_accents: { type: 'array', items: { type: 'string' }, description: 'One correct Spanish letter per "�" in the TITLE, in left-to-right order (e.g. ["Ó"]). [] if none. Not the whole title.' },
       summary: { type: 'string', description: '1-2 sentence summary: what changes and who it obligates' },
       sectors: { type: 'array', items: { type: 'string', enum: [...SECTORS] } },
       company_types: { type: 'array', items: { type: 'string', enum: ['SAS', 'SA', 'LTDA', 'persona natural'] } },
@@ -45,7 +55,7 @@ const ANALYSIS_TOOL = {
       },
       severity: { type: 'string', enum: ['info', 'low', 'medium', 'high'] },
     },
-    required: ['summary', 'sectors', 'company_types', 'obligations', 'severity'],
+    required: ['title_accents', 'summary', 'sectors', 'company_types', 'obligations', 'severity'],
   },
 }
 
