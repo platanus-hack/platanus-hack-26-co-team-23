@@ -14,14 +14,14 @@ const POINTS = [
 export function ProSpotlight() {
   return (
     <section id="pro" className="mx-auto max-w-6xl px-4 py-20 md:px-6">
-      <Card className="overflow-hidden bg-foreground text-background ring-0">
+      <Card className="overflow-hidden bg-foreground text-background ring-0 dark:bg-card dark:text-card-foreground dark:ring-1 dark:ring-primary/30">
         <CardContent className="grid grid-cols-1 gap-10 p-8 md:grid-cols-2 md:p-12">
           <div>
-            <Badge className="bg-background text-foreground">PRO</Badge>
+            <Badge className="bg-background text-foreground dark:bg-primary dark:text-primary-foreground">PRO</Badge>
             <h2 className="mt-4 font-heading text-3xl font-bold tracking-tight text-pretty">
               De &ldquo;te aviso&rdquo; a &ldquo;te traigo el Pull Request&rdquo;
             </h2>
-            <p className="mt-4 text-background/70 text-pretty">
+            <p className="mt-4 text-background/70 text-pretty dark:text-card-foreground/70">
               Cuando una norma nueva sí afecta tu código, un agente lee tu
               repositorio, identifica dónde incumple y abre un Pull Request con el
               cambio propuesto — asignado al revisor que tú definas. complAI jamás
@@ -30,7 +30,7 @@ export function ProSpotlight() {
             <Button
               size="lg"
               variant="secondary"
-              className="mt-6 bg-background text-foreground hover:bg-background/90"
+              className="mt-6 bg-background text-foreground hover:bg-background/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
               nativeButton={false} render={<Link href="/sign-up" />}
             >
               Comenzar con PRO
@@ -40,13 +40,13 @@ export function ProSpotlight() {
           <ul className="space-y-4">
             {POINTS.map((point) => (
               <li key={point} className="flex items-start gap-3">
-                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-background/70" />
-                <span className="text-sm text-background/90">{point}</span>
+                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-background/70 dark:text-primary" />
+                <span className="text-sm text-background/90 dark:text-card-foreground/90">{point}</span>
               </li>
             ))}
-            <li className="flex items-start gap-3 rounded-lg border border-background/20 p-3">
-              <GitPullRequest className="mt-0.5 size-5 shrink-0 text-background/70" />
-              <span className="text-sm text-background/90">
+            <li className="flex items-start gap-3 rounded-lg border border-background/20 p-3 dark:border-border">
+              <GitPullRequest className="mt-0.5 size-5 shrink-0 text-background/70 dark:text-primary" />
+              <span className="text-sm text-background/90 dark:text-card-foreground/90">
                 Abierto por <span className="font-mono">complia-app</span>, en menos
                 de un minuto desde que se detecta el impacto.
               </span>

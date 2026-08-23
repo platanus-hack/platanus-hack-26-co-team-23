@@ -5,6 +5,7 @@ import { Menu } from "lucide-react";
 import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Sheet,
   SheetContent,
@@ -52,6 +53,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 
           {/* Right side: Organization, User, Role Badge */}
           <div className="flex items-center gap-4">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
             {/* Role Badge */}
             <Badge variant={roleBadgeVariant}>
               {roleBadgeText}

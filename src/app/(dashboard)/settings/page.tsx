@@ -72,9 +72,9 @@ export default async function SettingsPage() {
       </div>
 
       {!isAdmin && (
-        <Card className="mb-6 border-amber-200 bg-amber-50">
+        <Card className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/40">
           <CardContent className="pt-6">
-            <p className="text-sm text-amber-900">
+            <p className="text-sm text-amber-900 dark:text-amber-200">
               Solo los administradores pueden cambiar estas configuraciones. Contacta a tu administrador si necesitas hacer cambios.
             </p>
           </CardContent>
