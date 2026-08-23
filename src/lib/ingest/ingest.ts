@@ -12,7 +12,7 @@ import type { SourceAdapter, SourceNorm } from './types'
 export const SOURCES: SourceAdapter[] = [suin, dian, superfinanciera, sic, legalize, corteConstitucional, croma]
 
 /** Pages to walk per source per run. Sources that can't paginate stop after page 1. */
-const DEFAULT_PAGES = 4
+const DEFAULT_PAGES = 8
 
 export type SourceStat = { fetched: number; nuevas: number; paginas: number; error?: string }
 
@@ -39,9 +39,18 @@ export async function ingestAll(
     const stat: SourceStat = { fetched: 0, nuevas: 0, paginas: 0 }
     stats[src.id] = stat
     try {
+      let previa: string | null = null
       for (let page = 0; page < pages; page++) {
         const rows = await src.fetch(limitPerSource, page * limitPerSource)
         if (!rows.length) break
+
+        // Whether the source paginates is decided by comparing pages, NOT by whether
+        // they brought anything new: the first pages are usually norms we already have,
+        // and the new ones live further in. Cutting on "nothing new" stopped SUIN at
+        // page 1 forever.
+        const huella = rows.map((r) => r.external_id).join('|')
+        if (huella === previa) break // identical page → the source ignores `offset`
+        previa = huella
         stat.paginas++
         stat.fetched += rows.length
 
@@ -54,10 +63,6 @@ export async function ingestAll(
         const { error } = await db.from('norms').upsert(rows, { onConflict: 'external_id' })
         if (error) throw error
         stat.nuevas += nuevas
-
-        // A page that brought nothing new means this source can't paginate (it handed
-        // back page 1 again) or we reached the end. Either way, stop asking.
-        if (nuevas === 0) break
       }
     } catch (e) {
       stat.error = (e as Error).message.slice(0, 120)
