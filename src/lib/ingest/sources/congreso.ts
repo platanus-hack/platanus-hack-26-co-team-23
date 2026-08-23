@@ -43,6 +43,29 @@ export function parseCongresoDate(raw: unknown): string | null {
 const RESUELTO = /archivad|retirad|sancionad|hundid|^ley$/i
 export const enTramite = (estado: string | null): boolean => !!estado && !RESUELTO.test(estado)
 
+// Siglas que se mantienen en mayúscula, y nombres propios que se re-capitalizan.
+const SIGLAS = new Set(['IVA', 'IA', 'TIC', 'SIM', 'DIAN', 'SIC', 'ONU', 'OCDE', 'MIPYME', 'MIPYMES', 'PYME', 'PYMES', 'SENA', 'ARL', 'EPS', 'IPS', 'SGP', 'SGR', 'DNP', 'ICBF', 'SISBEN', 'VIS', 'POT', 'RUT', 'NIT', 'UGPP'])
+const PROPIOS = new Set(['colombia', 'bogotá', 'bogota'])
+const cap = (w: string) => w.charAt(0).toUpperCase() + w.slice(1)
+
+/**
+ * Sentence-cases shouty ALL-CAPS bill titles ("POR LA CUAL SE..." → "Por la cual se...").
+ * Leaves already mixed-case titles untouched, and keeps acronyms (IVA, IA, MIPYMES) upper and
+ * a few proper nouns capitalized. Not perfect (some proper nouns slip through) — good enough for
+ * readable cards without an NLP dependency.
+ */
+export function smartTitleCase(s: string): string {
+  if (/[a-záéíóúñ]/.test(s)) return s // has lowercase → not shouty, leave it
+  let first = true
+  return s.toLowerCase().replace(/[\p{L}\p{N}]+/gu, (w) => {
+    const upper = w.toUpperCase()
+    if (SIGLAS.has(upper)) return upper
+    if (PROPIOS.has(w)) return cap(w)
+    if (first) { first = false; return cap(w) }
+    return w
+  })
+}
+
 export function mapCamaraRow(row: Row): SourceNorm | null {
   const num = pick(row, 'No. Cámara', 'No. Senado', 'No.')
   const titulo = pick(row, 'Título')
@@ -58,7 +81,7 @@ export function mapCamaraRow(row: Row): SourceNorm | null {
   return {
     external_id: `congreso-camara-${num.replace(/[^\w/-]/g, '')}`,
     source: 'congreso',
-    title: `Proyecto de Ley ${num} — ${titulo}`,
+    title: `Proyecto de Ley ${num} — ${smartTitleCase(titulo)}`,
     issuer: autores,
     norm_type: (tipo ?? 'proyecto de ley').toLowerCase(),
     published_at: parseCongresoDate(pick(row, 'Fecha Cámara', 'Fecha Senado')),

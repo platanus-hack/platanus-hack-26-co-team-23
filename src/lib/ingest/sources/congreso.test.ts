@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { parseCongresoDate, mapCamaraRow, enTramite } from './congreso'
+import { parseCongresoDate, mapCamaraRow, enTramite, smartTitleCase } from './congreso'
+
+describe('smartTitleCase', () => {
+  it('sentence-cases shouty titles, keeping acronyms and Colombia', () => {
+    expect(smartTitleCase('POR LA CUAL SE DICTAN DISPOSICIONES ORGÁNICAS EN MATERIA DE PRESUPUESTO')).toBe(
+      'Por la cual se dictan disposiciones orgánicas en materia de presupuesto',
+    )
+    expect(smartTitleCase('SE REGULA LA IA EN COLOMBIA')).toBe('Se regula la IA en Colombia')
+    expect(smartTitleCase('MEDIDAS PARA MIPYMES Y EL IVA')).toBe('Medidas para MIPYMES y el IVA')
+  })
+  it('leaves already mixed-case titles untouched', () => {
+    expect(smartTitleCase('Por medio de la cual se modifica la Ley 1979 de 2019')).toBe(
+      'Por medio de la cual se modifica la Ley 1979 de 2019',
+    )
+  })
+})
 
 describe('parseCongresoDate', () => {
   it('passes ISO dates through', () => {
@@ -49,7 +64,7 @@ describe('mapCamaraRow', () => {
     expect(n.external_id).toBe('congreso-camara-228/2026C')
     expect(n.published_at).toBe('2026-08-19')
     expect(n.url).toBe('https://www.camara.gov.co/educacion-media')
-    expect(n.title).toBe('Proyecto de Ley 228/2026C — EDUCACIÓN MEDIA COMO DERECHO FUNDAMENTAL')
+    expect(n.title).toBe('Proyecto de Ley 228/2026C — Educación media como derecho fundamental')
     expect(n.raw_text).toContain('Objeto: Modificar el artículo 67')
     expect(n.raw_text).toContain('Estado del trámite: Trámite en Comisión')
   })
