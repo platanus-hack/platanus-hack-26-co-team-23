@@ -67,7 +67,8 @@ async function handle(req: NextRequest) {
   }
 
   // One alert: brief (1 LLM call) → insert → dispatch to the company's channels.
-  const processOne = async ({ company, norm, normId }: WorkItem): Promise<string[]> => {
+  // Returns null when nothing was sent, so a skipped item is not counted as created.
+  const processOne = async ({ company, norm, normId }: WorkItem): Promise<string[] | null> => {
     const brief = await generateBrief(norm, company).catch((e) => {
       console.error(`brief failed for ${company.id}:${normId}:`, e)
       return null
@@ -76,36 +77,56 @@ async function handle(req: NextRequest) {
       ? briefToAlertFields(brief)
       : { impact: norm.summary ?? norm.title, recommendation: 'Revisa la norma con tu contador.' }
 
-    const { data: alert } = await db.from('alerts')
+    // The row is written BEFORE dispatching, and a failure to write cancels the dispatch.
+    // The invariant is "never notify what we did not record": the previous version ignored
+    // the insert error and dispatched anyway, so an alert that failed to persist was
+    // re-sent on every single run — the same 20 notifications arriving again and again.
+    //
+    // The `seen` set above cannot carry this on its own: it is a snapshot taken at the start
+    // of the run, so the scheduled cron and the admin button firing at the same time both
+    // read "not alerted yet" and both dispatch. The unique index on (company_id, norm_id) is
+    // the only source of truth that survives concurrency — 23505 means another run got here
+    // first, which is not an error, just our cue to stay quiet.
+    const { data: alert, error } = await db.from('alerts')
       .insert({ company_id: company.id, norm_id: normId, impact, recommendation, brief })
       .select('id').single()
 
+    if (error || !alert) {
+      if (error?.code !== '23505') console.error(`alert insert failed for ${company.id}:${normId}:`, error)
+      return null
+    }
+
     const { delivered } = await deliverAlert(company.channels ?? [], {
-      alert_id: alert?.id,
+      alert_id: alert.id,
       norm_title: norm.title, norm_url: norm.url, impact, recommendation,
       norm_issuer: norm.issuer, norm_source: norm.source,
       severity: (norm.severity ?? 'low') as 'low' | 'medium' | 'high',
       brief,
-      guide_url: alert ? guideUrl(alert.id) : null,
+      guide_url: guideUrl(alert.id),
     })
     return delivered
   }
 
   // Phase 2 — process the work list in concurrent batches.
   let alertsCreated = 0
+  let alertsSkipped = 0
   const channelStats: Record<string, number> = {}
   for (let i = 0; i < work.length; i += CONCURRENCY) {
     const batch = work.slice(i, i + CONCURRENCY)
     const results = await Promise.allSettled(batch.map(processOne))
     for (const r of results) {
       if (r.status !== 'fulfilled') { console.error('alert failed:', r.reason); continue }
+      // null = the row was not written, so nothing was dispatched either.
+      if (r.value === null) { alertsSkipped++; continue }
       alertsCreated++
       r.value.forEach((t) => { channelStats[t] = (channelStats[t] ?? 0) + 1 })
     }
   }
 
   // capped=true → norms still pending; run again (or wait for the cron) to drain them.
-  return NextResponse.json({ companies: companies?.length ?? 0, alertsCreated, capped, channels: channelStats })
+  // alertsSkipped > 0 means another run had already alerted those pairs — expected when the
+  // cron overlaps a manual run, and worth seeing rather than hiding.
+  return NextResponse.json({ companies: companies?.length ?? 0, alertsCreated, alertsSkipped, capped, channels: channelStats })
 }
 
 export { handle as GET, handle as POST }
