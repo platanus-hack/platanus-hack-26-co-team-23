@@ -113,28 +113,41 @@ y 15 de `legalize`), que quedarán duplicadas con las nuevas. Hay que borrarlas:
 `delete from norms where source in ('sic','legalize');` — se vuelven a ingestar en la
 siguiente corrida.
 
+### Un id repetido dentro de la misma página tumbaba la fuente entera
+
+Tercer hallazgo del mismo repaso, y el más silencioso. Postgres rechaza **el lote completo**
+si un `ON CONFLICT` propone dos veces la misma clave (SQLSTATE 21000, verificado contra la
+base: `500` con «cannot affect row a second time»). El `try` de `ingestAll` envuelve el
+bucle de páginas, así que un id repetido no perdía una fila: **abortaba todas las páginas
+que faltaban de esa fuente** y la marcaba caída.
+
+La SIC lo dispara de verdad: lista el mismo documento bajo el filtro de «resolución» y el de
+«circular», y eso repetía ids en las páginas 3 y 7. **Arreglado en `ingestAll`, no en el
+adaptador**: la unicidad dentro del lote es una precondición del upsert, así que ningún
+adaptador nuevo debería poder violarla. `dedupeById` se queda con la primera aparición
+(las páginas vienen de más nueva a más vieja).
+
 ### Verificación final
 
 Las siete fuentes, 8 páginas cada una, sin escribir en la base:
 
 ```
-suin                  +15 +15 +15 +14 +15 +15 +15 +15  únicos=119  colisiones=0  2.1s
-dian                  +28                              únicos= 28  colisiones=0  4.3s  pág 1 vacía
-superfinanciera       +28                              únicos= 28  colisiones=0  1.8s  pág 1 vacía
-sic                   +20 +20 +20 +20 +20 +20 +20 +20  únicos=157  colisiones=0  2.2s
-legalize              +11 +15 +15 +15 +14 +15 +15 +15  únicos=115  colisiones=0  2.0s
-corte-constitucional  +15 +15 +15 +15 +15 +15 +15 +15  únicos=120  colisiones=0  2.2s
-croma                 +14                              únicos= 14  colisiones=0  0.5s  pág 1 vacía
+suin                  págs=8  únicos=119  repetidos_en_lote=0  2.5s
+dian                  págs=1  únicos= 28  repetidos_en_lote=0  5.0s
+superfinanciera       págs=1  únicos= 28  repetidos_en_lote=0  2.1s
+sic                   págs=8  únicos=157  repetidos_en_lote=3  2.8s
+legalize              págs=8  únicos=115  repetidos_en_lote=0  2.4s
+corte-constitucional  págs=8  únicos=120  repetidos_en_lote=0  2.1s
+croma                 págs=1  únicos= 14  repetidos_en_lote=0  1.5s
 
-TOTAL: 581 normas distintas por corrida (antes: ~210), 15 s contra ~50 s
+TOTAL: 581 normas distintas por corrida (antes: ~210), 19 s contra ~50 s
 ```
+
+Los 3 repetidos en lote de la SIC ahora se absorben en vez de tumbar la fuente: sus 8
+páginas sobreviven.
 
 El contrato está fijado en `src/lib/ingest/pagination.test.ts`, para que un adaptador nuevo
 que se coma el `offset` falle en CI en vez de estancar el corpus en silencio.
-
-Pendiente menor: el comentario de `sic.ts` apunta a
-`src/lib/ingest/certs/globalsign-rsa-ov-2018.pem`, que no existe; el certificado está
-embebido en el propio archivo.
 
 Descartado tras medirlo: sospeché que el `$order=a_o DESC` de SUIN, al no tener desempate,
 haría que Socrata devolviera filas repetidas o saltadas entre páginas. Cuatro páginas con y

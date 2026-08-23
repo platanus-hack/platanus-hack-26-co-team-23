@@ -14,7 +14,7 @@ const LISTINGS = [
 // stays FULL — we just add the official GlobalSign intermediate
 // (downloaded from the site's own cert's AIA: secure.globalsign.com/cacert/gsrsaovsslca2018.crt,
 // issued by GlobalSign Root CA R3, which is in Node's trust store; expires 2028-11).
-// Copy in the repo: src/lib/ingest/certs/globalsign-rsa-ov-2018.pem
+// The certificate is inlined below rather than read from disk so it survives bundling.
 const GLOBALSIGN_RSA_OV_2018 = `-----BEGIN CERTIFICATE-----
 MIIETjCCAzagAwIBAgINAe5fIh38YjvUMzqFVzANBgkqhkiG9w0BAQsFADBMMSAw
 HgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSMzETMBEGA1UEChMKR2xvYmFs

@@ -54,13 +54,19 @@ export async function ingestAll(
         stat.paginas++
         stat.fetched += rows.length
 
-        const nuevas = await countNew(rows)
+        // Postgres rejects a whole ON CONFLICT batch that proposes the same key twice
+        // (SQLSTATE 21000), and the catch below wraps the page loop — so one repeated id
+        // used to abort every remaining page of that source. The SIC does repeat: the same
+        // document is listed under both the "resolución" and "circular" filters.
+        const unicas = dedupeById(rows)
+
+        const nuevas = await countNew(unicas)
         // Without ignoreDuplicates the existing rows get refreshed, so a fix to a
         // source's mapping improves the corpus already loaded. The payload is
         // SourceNorm (8 columns) and PostgREST only updates the columns present, so
         // summary/sectors/obligations/severity/analyzed_at survive — this does NOT
         // re-trigger LLM analysis.
-        const { error } = await db.from('norms').upsert(rows, { onConflict: 'external_id' })
+        const { error } = await db.from('norms').upsert(unicas, { onConflict: 'external_id' })
         if (error) throw error
         stat.nuevas += nuevas
       }
@@ -70,6 +76,13 @@ export async function ingestAll(
     }
   }
   return stats
+}
+
+/** First occurrence wins: the adapters return their pages newest-first. */
+export function dedupeById(rows: SourceNorm[]): SourceNorm[] {
+  const porId = new Map<string, SourceNorm>()
+  for (const row of rows) if (!porId.has(row.external_id)) porId.set(row.external_id, row)
+  return [...porId.values()]
 }
 
 /** How many of these are not stored yet — the honest "new" count. */

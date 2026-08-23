@@ -5,6 +5,8 @@ import { legalize } from './sources/legalize'
 import { superfinanciera } from './sources/superfinanciera'
 import { dian } from './sources/dian'
 import { croma } from './sources/croma'
+import { dedupeById } from './ingest'
+import type { SourceNorm } from './types'
 
 /**
  * The pagination contract between ingestAll and the adapters.
@@ -65,5 +67,21 @@ describe('bounded sources exhaust themselves on page 0', () => {
     const spy = mockFetch([])
     await expect(source.fetch(15, 15)).resolves.toEqual([])
     expect(spy).not.toHaveBeenCalled()
+  })
+})
+
+describe('dedupeById', () => {
+  const norm = (external_id: string, title: string): SourceNorm => ({
+    external_id, title, source: 'sic', issuer: null, norm_type: null,
+    published_at: null, url: null, raw_text: title,
+  })
+
+  // Postgres rejects the whole ON CONFLICT batch if a key repeats inside it (SQLSTATE
+  // 21000), and that aborts every remaining page of the source. The SIC lists the same
+  // document under two type filters, so its pages really do carry repeats.
+  it('drops repeats within a page and keeps the first one', () => {
+    const out = dedupeById([norm('a', 'primera'), norm('b', 'otra'), norm('a', 'segunda')])
+    expect(out.map((r) => r.external_id)).toEqual(['a', 'b'])
+    expect(out[0].title).toBe('primera')
   })
 })
