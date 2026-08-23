@@ -10,6 +10,9 @@ const YEAR_PAGES: ReadonlyArray<readonly [string, string]> = [
   ['2025', 'https://www.superfinanciera.gov.co/publicaciones/10115459/circulares-externas-2025/'],
 ]
 
+// Upper bound so a change in the listing's markup can't flood a run; today it parses ~28.
+const MAX_PER_RUN = 100
+
 const pageUrlFor = (year: string) => YEAR_PAGES.find(([y]) => y === year)?.[1] ?? null
 
 // The listing is a table: <tr> [Number | Date | Description | Bulletin] + idFile download links.
@@ -41,7 +44,11 @@ export function parseSfcListing(html: string, year: string): SourceNorm[] {
 
 export const superfinanciera: SourceAdapter = {
   id: 'superfinanciera',
-  async fetch(limit = 20) {
+  async fetch(limit = 20, offset = 0) {
+    // Bounded source: the two annual pages are downloaded whole anyway (~28 circulars), so
+    // there is nothing to fetch on a page 2. The old `.slice(0, limit)` discarded ~13
+    // circulars that were already parsed and in memory.
+    if (offset > 0) return []
     const norms: SourceNorm[] = []
     for (const [year, url] of YEAR_PAGES) {
       const html = await (await fetch(url, { headers: BROWSER_HEADERS })).text()
@@ -50,8 +57,8 @@ export const superfinanciera: SourceAdapter = {
     const seen = new Set<string>()
     return norms
       .filter((n) => !seen.has(n.external_id) && seen.add(n.external_id))
-      // Trim by the NEWEST ones, not by the order the pages were walked in.
+      // Newest first, not the order the pages were walked in.
       .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''))
-      .slice(0, limit)
+      .slice(0, Math.max(limit, MAX_PER_RUN))
   },
 }

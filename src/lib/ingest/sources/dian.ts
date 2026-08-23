@@ -38,7 +38,12 @@ export function extractDianDate(text: string, year: number): string {
 
 export const dian: SourceAdapter = {
   id: 'dian',
-  async fetch(limit = 10) {
+  async fetch(limit = 10, offset = 0) {
+    // Bounded source: the seed exposes ~28 docs and there is no page 2 to walk to. Rather
+    // than paginate, page 0 returns everything found (it was already downloaded, and the
+    // old `.slice(0, limit)` threw ~13 of them away) and later pages return nothing, which
+    // makes ingestAll move on without paying a second full scrape of the same 28 documents.
+    if (offset > 0) return []
     const seed = await (await fetch(SEED, { headers: BROWSER_HEADERS })).text()
     const files = [...new Set(seed.match(/[a-z]+_dian_\d+_202[5-9]\.htm/g) ?? [])]
       .sort((a, b) => {
@@ -68,9 +73,7 @@ export const dian: SourceAdapter = {
         raw_text,
       })
     }
-    // Trim by real date, now known: this way truncation doesn't drop the newest norm.
-    return norms
-      .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''))
-      .slice(0, limit)
+    // Newest first; `limit` already bounded the download above, so nothing is trimmed here.
+    return norms.sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''))
   },
 }

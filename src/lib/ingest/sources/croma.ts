@@ -100,7 +100,11 @@ function isoDate(d: Date) {
 
 export const croma: SourceAdapter = {
   id: 'croma',
-  async fetch(limit = 25) {
+  async fetch(limit = 25, offset = 0) {
+    // Deliberately unpaginated (see MAX_PER_PAGE above): returning nothing past page 0 keeps
+    // ingestAll from spending a second request per run against the 100/day quota just to
+    // discover the source repeats itself.
+    if (offset > 0) return []
     const apiKey = process.env.CROMA_API_KEY
     if (!apiKey) throw new Error('CROMA_API_KEY not set')
 

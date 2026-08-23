@@ -30,8 +30,12 @@ async function handle(req: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const db = supabaseAdmin()
-  const { data: companies } = await db.from('companies')
-    .select('id, name, company_type, sectors, channels')
+  // Optional ?company=<id> restricts the run to one company — for controlled demos/tests
+  // without dispatching to every company. Omit it and the cron behaves as before (all).
+  const onlyCompany = new URL(req.url).searchParams.get('company')
+  let companiesQuery = db.from('companies').select('id, name, company_type, sectors, channels')
+  if (onlyCompany) companiesQuery = companiesQuery.eq('id', onlyCompany)
+  const { data: companies } = await companiesQuery
   const { data: existing } = await db.from('alerts').select('company_id, norm_id')
   const seen = new Set((existing ?? []).map((a) => `${a.company_id}:${a.norm_id}`))
 

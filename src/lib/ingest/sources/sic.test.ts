@@ -19,7 +19,8 @@ describe('parseSicRows', () => {
     const items = parseSicRows(html, 'resolucion', 10)
     expect(items).toHaveLength(1)
     expect(items[0]).toMatchObject({
-      external_id: 'sic-resolucion-12345-de-2026',
+      // the date is part of the id: the SIC restarts numbering each year and the name alone repeats
+      external_id: 'sic-resolucion-12345-de-2026-2023-09-29',
       source: 'sic',
       issuer: 'SIC',
       norm_type: 'resolucion',

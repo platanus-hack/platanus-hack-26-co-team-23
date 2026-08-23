@@ -64,10 +64,12 @@ export function mapConstitutionalCourtRow(row: SocrataRow): SourceNorm | null {
 
 export const corteConstitucional: SourceAdapter = {
   id: 'corte-constitucional',
-  async fetch(limit = 25) {
+  async fetch(limit = 25, offset = 0) {
     const order = encodeURIComponent('fecha_sentencia DESC')
+    // Same SODA pagination as SUIN. Without $offset this source was stuck on its 15 newest
+    // rulings while the dataset holds 29k+ — by far the biggest ceiling left unused.
     const res = await fetch(
-      `https://www.datos.gov.co/resource/${DATASET}.json?$limit=${limit}&$order=${order}`,
+      `https://www.datos.gov.co/resource/${DATASET}.json?$limit=${limit}&$offset=${offset}&$order=${order}`,
       { headers: { Accept: 'application/json' } },
     )
     if (!res.ok) throw new Error(`SODA ${res.status}`)

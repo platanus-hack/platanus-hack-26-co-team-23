@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { SiteHeader } from "@/components/landing/site-header";
 import { Hero } from "@/components/landing/hero";
 import { Stats } from "@/components/landing/stats";
+import { CitizenScan } from "@/components/landing/citizen-scan";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { Channels } from "@/components/landing/channels";
 import { ProSpotlight } from "@/components/landing/pro-spotlight";
@@ -24,6 +25,7 @@ export default async function Home() {
       <main className="flex-1">
         <Hero />
         <Stats />
+        <CitizenScan />
         <HowItWorks />
         <Channels />
         <ProSpotlight />
