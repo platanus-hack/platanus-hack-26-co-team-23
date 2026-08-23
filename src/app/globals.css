@@ -32,10 +32,12 @@ body {
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+html {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
 }
 
 @theme inline {
