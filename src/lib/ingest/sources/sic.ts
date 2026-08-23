@@ -14,7 +14,7 @@ const LISTINGS = [
 // stays FULL — we just add the official GlobalSign intermediate
 // (downloaded from the site's own cert's AIA: secure.globalsign.com/cacert/gsrsaovsslca2018.crt,
 // issued by GlobalSign Root CA R3, which is in Node's trust store; expires 2028-11).
-// Copy in the repo: src/lib/ingest/certs/globalsign-rsa-ov-2018.pem
+// The certificate is inlined below rather than read from disk so it survives bundling.
 const GLOBALSIGN_RSA_OV_2018 = `-----BEGIN CERTIFICATE-----
 MIIETjCCAzagAwIBAgINAe5fIh38YjvUMzqFVzANBgkqhkiG9w0BAQsFADBMMSAw
 HgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSMzETMBEGA1UEChMKR2xvYmFs
@@ -61,13 +61,18 @@ export function parseSicRows(html: string, norm_type: string, limit: number): So
     if (cells.length < 5 || !cells[2]) continue
     const [, topic, name, description, date] = cells
     const pdf = row.match(/href="(https?:\/\/[^"]+\.pdf[^"]*)"/i)?.[1] ?? null
+    const published_at = parseSpanishDate(date ?? '')
+    // The name alone is NOT unique: the SIC restarts its numbering every year, so
+    // "Circular 03" exists in almost every one of them and the ids collapsed onto a single
+    // row — the upsert then kept whichever page arrived last and dropped the rest. The date
+    // also separates the long titles that the 60-char slug truncates to the same string.
     norms.push({
-      external_id: `sic-${slug(name)}`,
+      external_id: `sic-${slug(name)}-${published_at ?? 'sin-fecha'}`,
       source: 'sic',
       title: `${name} (SIC)${description ? ` — ${description.slice(0, 90)}` : ''}`,
       issuer: 'SIC',
       norm_type,
-      published_at: parseSpanishDate(date ?? ''),
+      published_at,
       url: pdf,
       // listing metadata; the full text lives in the PDF (post-hackathon stretch)
       raw_text: `${name} — SIC. Tema: ${topic}. ${description}. Fecha: ${date}.`,
@@ -79,11 +84,15 @@ export function parseSicRows(html: string, norm_type: string, limit: number): So
 
 export const sic: SourceAdapter = {
   id: 'sic',
-  async fetch(limit = 10) {
+  async fetch(limit = 10, offset = 0) {
+    // The Drupal listing paginates with ?page=N (0-based) and each page holds 10 rows.
+    // `limit` is a per-page cap, not a budget to split across listings: splitting it
+    // (ceil(limit / 2) = 8) silently dropped 2 of every page's 10 rows.
+    const page = Math.floor(offset / limit)
     const norms: SourceNorm[] = []
     for (const listing of LISTINGS) {
-      const html = await (await sicFetch(listing.url)).text()
-      norms.push(...parseSicRows(html, listing.norm_type, Math.ceil(limit / LISTINGS.length)))
+      const html = await (await sicFetch(`${listing.url}&page=${page}`)).text()
+      norms.push(...parseSicRows(html, listing.norm_type, limit))
     }
     return norms
   },

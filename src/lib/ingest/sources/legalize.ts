@@ -18,7 +18,14 @@ const COMMIT_MESSAGE_TRAILERS = {
   article: /\nArtículos afectados: ([\s\S]*?)\n\n/,
 } as const
 
-export function parseLegalizeCommit(message: string): SourceNorm | null {
+/**
+ * `sha` is what makes the row unique. The `Source-Id` trailer looked like a per-reform id
+ * and the code treated it as one, but it identifies the NORM: every reform to Ley 599 of
+ * 2000 carries the same one, so reforms to art. 296 and to art. 58 collapsed onto a single
+ * row and the upsert kept only the last page's version. One commit is one reform, and the
+ * sha is stable across runs, so it is the honest key.
+ */
+export function parseLegalizeCommit(message: string, sha: string): SourceNorm | null {
   if (!message.startsWith('[reform]')) return null // skip bootstrap/fix-pipeline commits
 
   const normId = message.match(COMMIT_MESSAGE_TRAILERS.normId)?.[1]
@@ -32,7 +39,7 @@ export function parseLegalizeCommit(message: string): SourceNorm | null {
   const [normType] = normId.split('-')
 
   return {
-    external_id: `legalize-${sourceId}`, // the disposition id: stable per article-version reform
+    external_id: `legalize-${sha.slice(0, 12)}`,
     source: 'legalize',
     title,
     issuer: null, // this dataset doesn't carry the issuing entity
@@ -43,29 +50,32 @@ export function parseLegalizeCommit(message: string): SourceNorm | null {
   }
 }
 
-type GithubCommit = { commit: { message: string } }
+type GithubCommit = { sha: string; commit: { message: string } }
 
 export const legalize: SourceAdapter = {
   id: 'legalize',
-  async fetch(limit = 25) {
-    // Buffer above `limit`: ~5% of commits aren't reforms (license/readme/pipeline fixes),
-    // and GitHub caps per_page at 100 — plenty for the sizes this pipeline runs at.
-    const perPage = Math.min(Math.max(limit * 2, 30), 100)
+  async fetch(limit = 25, offset = 0) {
+    // per_page mirrors `limit` and page is derived from `offset` so the windows line up:
+    // an over-fetch buffer plus a client-side .slice() would have left gaps between pages
+    // (page 1 would return 30 commits and keep 15, and page 2 would resume at commit 31).
+    // The ~5% of commits that aren't reforms just make a page yield slightly under `limit`.
+    const perPage = Math.min(limit, 100)
+    const page = Math.floor(offset / limit) + 1 // GitHub's pages are 1-based
     const headers: Record<string, string> = { Accept: 'application/vnd.github+json' }
     // Optional: an unauthenticated GitHub call is capped at 60 req/hour per IP; reusing the
     // repo's own GITHUB_TOKEN (already provisioned for the PRO track) raises that to 5000/hour.
     // Read-only against a public repo, so no extra scope risk.
     if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`
 
-    const res = await fetch(`https://api.github.com/repos/${REPO}/commits?per_page=${perPage}`, { headers })
+    const res = await fetch(`https://api.github.com/repos/${REPO}/commits?per_page=${perPage}&page=${page}`, { headers })
     if (!res.ok) throw new Error(`GitHub ${res.status}`)
     const commits = (await res.json()) as GithubCommit[]
 
     return commits
-      .map((c) => parseLegalizeCommit(c.commit.message))
+      .map((c) => parseLegalizeCommit(c.commit.message, c.sha))
       .filter((n): n is SourceNorm => n !== null)
       // Defensive: sort by the real reform date rather than trusting the API's commit order.
+      // Sorted within the page only — no .slice(), or the trimmed rows would be lost for good.
       .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''))
-      .slice(0, limit)
   },
 }
