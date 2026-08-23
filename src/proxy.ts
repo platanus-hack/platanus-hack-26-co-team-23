@@ -1,6 +1,15 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isProtectedRoute = createRouteMatcher(["/settings(.*)", "/feed(.*)", "/keys(.*)"]);
+// /admin was missing: it is the route that triggers the ingest and the multichannel
+// dispatch, so it is the one that least belongs outside the matcher. The admin *role* is
+// still checked in the page itself, which redirects a plain member to /feed — friendlier
+// than the 404 that auth.protect() returns.
+const isProtectedRoute = createRouteMatcher([
+  "/settings(.*)",
+  "/feed(.*)",
+  "/keys(.*)",
+  "/admin(.*)",
+]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {

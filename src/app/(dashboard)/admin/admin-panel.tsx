@@ -23,11 +23,8 @@ export function AdminPanel() {
     setAction("update");
     startTransition(async () => {
       const r = await runManualUpdate(n);
-      if (r.ok) {
-        toast.success(`Ingesta lista: ${r.data.nuevas ?? 0} nuevas, ${r.data.analyzed ?? 0} analizadas`);
-      } else {
-        toast.error(`Error en la ingesta: ${r.error}`);
-      }
+      if (r.ok) toast.success("Ingesta iniciada", { description: "Corre en segundo plano (~1 min). Luego pulsa 'Ejecutar notificación'." });
+      else toast.error(`No se pudo iniciar: ${r.error}`);
       setAction(null);
     });
   };
@@ -36,13 +33,8 @@ export function AdminPanel() {
     setAction("notify");
     startTransition(async () => {
       const r = await runManualNotification();
-      if (r.ok) {
-        const ch = r.data.channels as Record<string, number> | undefined;
-        const canales = ch && Object.keys(ch).length ? ` (${Object.entries(ch).map(([k, v]) => `${k}:${v}`).join(", ")})` : "";
-        toast.success(`Notificación lista: ${r.data.alertsCreated ?? 0} alertas${canales}`);
-      } else {
-        toast.error(`Error en la notificación: ${r.error}`);
-      }
+      if (r.ok) toast.success("Notificación iniciada", { description: "Corre en segundo plano. Las alertas nuevas aparecen en el feed." });
+      else toast.error(`No se pudo iniciar: ${r.error}`);
       setAction(null);
     });
   };
@@ -52,7 +44,7 @@ export function AdminPanel() {
       <Card>
         <CardHeader>
           <CardTitle>Manual update</CardTitle>
-          <CardDescription>Trae normativa nueva de las fuentes y la analiza.</CardDescription>
+          <CardDescription>Trae normativa nueva de las fuentes y la analiza (en segundo plano).</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -76,7 +68,7 @@ export function AdminPanel() {
             </p>
           </div>
           <Button onClick={onUpdate} disabled={pending || !valid} className="w-full">
-            {pending && action === "update" ? "Actualizando…" : "Ejecutar ingesta"}
+            {pending && action === "update" ? "Iniciando…" : "Ejecutar ingesta"}
           </Button>
         </CardContent>
       </Card>
@@ -84,11 +76,11 @@ export function AdminPanel() {
       <Card>
         <CardHeader>
           <CardTitle>Manual notification</CardTitle>
-          <CardDescription>Cruza las normas contra los perfiles y despacha las alertas.</CardDescription>
+          <CardDescription>Cruza las normas contra los perfiles y despacha las alertas nuevas.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col justify-end h-[calc(100%-5rem)]">
           <Button onClick={onNotify} disabled={pending} variant="secondary" className="w-full">
-            {pending && action === "notify" ? "Notificando…" : "Ejecutar notificación"}
+            {pending && action === "notify" ? "Iniciando…" : "Ejecutar notificación"}
           </Button>
         </CardContent>
       </Card>
