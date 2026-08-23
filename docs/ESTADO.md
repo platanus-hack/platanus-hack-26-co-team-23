@@ -52,7 +52,7 @@ Público y sin límite: cualquiera puede consultar cédulas ajenas en masa y que
 
 - **El cron de match se come el cupo por orden de empresa.** `MAX_NEW_ALERTS_PER_RUN = 20` y recorre las empresas en el orden de la tabla: si las primeras tienen alertas pendientes, la última **nunca** llega. Para probar una empresa concreta hay que vaciar temporalmente los sectores de las demás (con backup y `finally`).
 - **Los canales sin `min_severity` mandan por cada alerta.** `CompLIA` y `empresa de bbc` están en `low`: una corrida grande les dispara decenas de mensajes. Subirlos a `high` antes de poblar.
-- **La ingesta se estancó en 115 normas** porque ningún adaptador paginaba y el contador venía del `count` del upsert (filas *tocadas*, no nuevas). PR #73 lo corrige; en la primera corrida se descubrió además que cortar en "página sin novedades" dejaba a SUIN pegada en la página 1 — el corte correcto es comparar la huella de ids entre páginas.
+- **La ingesta se estancó en 115 normas** porque ningún adaptador paginaba y el contador venía del `count` del upsert (filas *tocadas*, no nuevas). PR #73 lo corrige y sube el corpus a 233; el resto de la deuda de paginación está auditada abajo, en «Paginación de la ingesta».
 - **El PR #43 se mergeó a medias** y dejó `src/lib/sources.ts` huérfano; lo recuperó el #51. Vale revisar dos veces los merges con conflicto.
 
 ## Decisiones de producto tomadas (no son descuidos)
@@ -61,6 +61,41 @@ Público y sin límite: cualquiera puede consultar cédulas ajenas en masa y que
 - **El agente nunca mergea**: los PR salen en *draft*, que además lo impide técnicamente.
 - **Una sola llamada al modelo por alerta**: `impact` y `recommendation` se derivan del brief en vez de pedir un segundo análisis.
 
+## Paginación de la ingesta — auditoría por fuente
+
+`ingestAll` recorre hasta `DEFAULT_PAGES = 8` páginas por fuente y corta cuando dos
+páginas traen la misma huella de ids, es decir, cuando la fuente ignora el `offset`.
+El mecanismo está bien; **el problema es que solo un adaptador de siete lo aprovecha**:
+`SourceAdapter.fetch(limit, offset)` declara `offset`, pero seis lo descartan en la firma.
+
+Medido el 2026-08-22 contra las fuentes en vivo:
+
+| Fuente | Hoy trae | Disponible | Diagnóstico |
+|---|---:|---:|---|
+| **corte-constitucional** | 15 | **29.424** | SODA acepta `$offset` igual que SUIN. Solo hay que pasarlo. Es el mayor techo desaprovechado con diferencia. |
+| **suin** | 120 | **443** (vigentes 2025-26) | Único que pagina. El límite ya no es el adaptador sino `8 páginas × 15`; subir el producto la termina de vaciar. |
+| **sic** | 16 | ~10 por página, **varias páginas** | El listado Drupal sí acepta `?page=N` y devuelve contenido distinto (verificado: pág. 0 → Res. 60687/2025, pág. 2 → Res. 28170/2022). El adaptador nunca lo manda. |
+| **legalize** | 15 | 30 por página, **varias páginas** | La API de commits de GitHub acepta `page=N` (verificado hasta la 3). El adaptador pide solo la primera. |
+| **superfinanciera** | 15 | **28** | No es que no pagine: **descarga las 28 y tira 13** en el `.slice(0, limit)` final. Paginar aquí es gratis, los datos ya están en memoria. |
+| **dian** | 15 | **28** | Mismo caso: descarga hasta 60 candidatos, encuentra 28 y recorta a 15. El techo real (28) lo pone el documento semilla, no el código. |
+| **croma** | 14 | — | **No es un bug**: no pagina a propósito por la cuota de 100 req/día, y su corpus de Consejo de Estado está congelado en feb-2022. Dejar como está. |
+
+Dos observaciones que salieron del mismo repaso:
+
+- **Cada fuente que no pagina cuesta una descarga completa de más por corrida.** El corte
+  por huella necesita dos páginas para concluir que son iguales, así que DIAN vuelve a
+  bajar sus 28 HTML (~8 s) solo para descubrirlo. Un `paginates: boolean` en `SourceAdapter`
+  lo evita sin tocar la lógica de corte.
+- **Comentario desactualizado en `sic.ts`**: apunta a `src/lib/ingest/certs/globalsign-rsa-ov-2018.pem`,
+  que no existe en el repo. El certificado está embebido en el propio archivo.
+
+Descartado tras medirlo: sospeché que el `$order=a_o DESC` de SUIN, al no tener desempate,
+haría que Socrata devolviera filas repetidas o saltadas entre páginas. Cuatro páginas con y
+sin `:id` dan el mismo resultado (59 únicas de 60; el duplicado viene del dataset, no del
+orden). **No hay que tocarlo.**
+
 ## Números del corpus
 
-115 normas al corte (7 fuentes: suin 30, sfc 21, sic 16, dian 15, legalize 15, corte-constitucional 15, seed 3), todas analizadas. 85 aplican a persona natural. Con el PR #73 desplegado, una corrida debería subirlo bastante.
+233 normas tras la corrida con el corte por huella corregido (129 → 233; SUIN aportó las
+104 nuevas), todas analizadas por el LLM. Cerrar la deuda de la tabla de arriba —
+sobre todo Corte Constitucional — pone el corpus en otro orden de magnitud.
