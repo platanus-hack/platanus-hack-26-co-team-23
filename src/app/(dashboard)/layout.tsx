@@ -34,6 +34,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     { label: "Alertas", href: "/feed" },
     { label: "Configuración", href: "/settings" },
     { label: "API Keys", href: "/keys" },
+    ...(isAdmin ? [{ label: "Admin", href: "/admin" }] : []),
   ];
 
   return (
