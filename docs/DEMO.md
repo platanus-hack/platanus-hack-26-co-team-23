@@ -15,8 +15,8 @@ Producción: **https://complai-co.vercel.app**
 > dos empleados de tiempo completo** en cumplimiento y aun así **el 45% no se entera** de lo
 > que le aplica — y paga multas, o cierra. **complAI** convierte la normativa en un agente:
 > ingesta las fuentes oficiales, cruza cada norma contra el perfil de tu empresa, y te avisa
-> por donde vivas — Slack, WhatsApp, incluso **una llamada de un agente de voz** si es
-> crítico — con *qué cambió, cómo te afecta y qué hacer*. Y en el plan PRO, **abre el Pull
+> por donde te quede más fácil — Slack, WhatsApp, incluso **una llamada de un agente de voz** si es
+> crítico — con *qué cambió, cómo te afecta y qué hacer*. Y en el plan PRO, incluso **abre el Pull
 > Request** que pone tu código en cumplimiento. Todo consultable por cualquier agente de IA
 > vía MCP.
 
