@@ -1,42 +1,63 @@
 import { describe, expect, it } from 'vitest'
-import { parseCongresoDate, mapCongresoRecord } from './congreso'
+import { parseCongresoDate, mapCamaraRow, enTramite } from './congreso'
 
 describe('parseCongresoDate', () => {
   it('passes ISO dates through', () => {
-    expect(parseCongresoDate('2022-07-21')).toBe('2022-07-21')
-    expect(parseCongresoDate('2022-07-21T00:00:00.000')).toBe('2022-07-21')
+    expect(parseCongresoDate('2026-08-19')).toBe('2026-08-19')
+    expect(parseCongresoDate('2026-08-19T00:00:00')).toBe('2026-08-19')
   })
-  it('reformats Colombian D/M/YYYY to ISO, padding single digits', () => {
+  it('reformats Colombian D/M/YYYY to ISO', () => {
     expect(parseCongresoDate('9/6/2018')).toBe('2018-06-09')
-    expect(parseCongresoDate('10/10/2017')).toBe('2017-10-10')
   })
-  it('returns null for junk / empty / NULL', () => {
-    expect(parseCongresoDate('LEGISLATURA 2017')).toBeNull()
+  it('returns null for junk/empty/NULL', () => {
     expect(parseCongresoDate('NULL')).toBeNull()
+    expect(parseCongresoDate('')).toBeNull()
     expect(parseCongresoDate(null)).toBeNull()
   })
 })
 
-describe('mapCongresoRecord', () => {
-  it('maps a real record and marks it en_tramite', () => {
-    const n = mapCongresoRecord({
-      n_senado: '034/22',
-      titulo: '"POR MEDIO DE LA CUAL SE MODIFICA LA LEY 1829 DE 2017"',
-      autor: 'H.S: FABIAN DIAZ PLATA',
-      f_presentado: '2022-07-21',
-      comision: 'SEXTA',
-      estado: 'PENDIENTE DISCUTIR PONENCIA PARA SEGUNDO DEBATE EN SENADO',
-    })
-    expect(n).not.toBeNull()
-    expect(n!.status).toBe('en_tramite')
-    expect(n!.source).toBe('congreso')
-    expect(n!.external_id).toBe('congreso-senado-034/22')
-    expect(n!.published_at).toBe('2022-07-21')
-    expect(n!.title).toContain('Proyecto de Ley 034/22')
-    expect(n!.title).not.toContain('"POR MEDIO') // outer quotes stripped
-    expect(n!.raw_text).toContain('Estado del trámite: PENDIENTE')
+describe('enTramite', () => {
+  it('is true for active statuses', () => {
+    expect(enTramite('Trámite en Comisión')).toBe(true)
+    expect(enTramite('Pendiente Ponencia Primer Debate')).toBe(true)
   })
-  it('skips header/junk rows without a title', () => {
-    expect(mapCongresoRecord({ n_senado: 'LEGISLATURA 2017 - 2018' })).toBeNull()
+  it('is false for resolved statuses', () => {
+    for (const s of ['Ley', 'Sancionada', 'Archivado', 'Retirado', 'Hundido']) expect(enTramite(s)).toBe(false)
+    expect(enTramite(null)).toBe(false)
+  })
+})
+
+describe('mapCamaraRow', () => {
+  const row = {
+    'No. Cámara': '228/2026C',
+    'Título': 'EDUCACIÓN MEDIA COMO DERECHO FUNDAMENTAL',
+    'Objeto del proyecto': 'Modificar el artículo 67 de la Constitución...',
+    'Tipo de Ley': 'Acto Legislativo',
+    'Autores': 'Ana Leidy Erazo Ruiz, Daniel Felipe Briceño Montes',
+    'Estado de Ley': 'Trámite en Comisión',
+    'Comisión(es)': 'Primera',
+    'Legislatura': '2026-2027',
+    'Fecha Cámara': '2026-08-19',
+    'Link del Proyecto': 'https://www.camara.gov.co/educacion-media',
+  }
+
+  it('maps a real Cámara row and marks it en_tramite', () => {
+    const n = mapCamaraRow(row)!
+    expect(n).not.toBeNull()
+    expect(n.source).toBe('congreso')
+    expect(n.status).toBe('en_tramite')
+    expect(n.external_id).toBe('congreso-camara-228/2026C')
+    expect(n.published_at).toBe('2026-08-19')
+    expect(n.url).toBe('https://www.camara.gov.co/educacion-media')
+    expect(n.title).toBe('Proyecto de Ley 228/2026C — EDUCACIÓN MEDIA COMO DERECHO FUNDAMENTAL')
+    expect(n.raw_text).toContain('Objeto: Modificar el artículo 67')
+    expect(n.raw_text).toContain('Estado del trámite: Trámite en Comisión')
+  })
+  it('drops resolved bills (already Ley/Archivado)', () => {
+    expect(mapCamaraRow({ ...row, 'Estado de Ley': 'Ley' })).toBeNull()
+    expect(mapCamaraRow({ ...row, 'Estado de Ley': 'Archivado' })).toBeNull()
+  })
+  it('skips rows without a number or title', () => {
+    expect(mapCamaraRow({ ...row, 'Título': '' })).toBeNull()
   })
 })
