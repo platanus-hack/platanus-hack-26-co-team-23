@@ -12,27 +12,10 @@ const RESOURCE = 'https://www.datos.gov.co/resource/feim-cysj.json'
 const clean = (v: unknown): string | null =>
   typeof v === 'string' && v.trim() && v.trim().toUpperCase() !== 'NULL' ? v.trim() : null
 
-// Some rows in the dataset arrive with the accented byte already replaced by U+FFFD ("�"),
-// so the original letter is lost and can't be decoded back. Titles are ALL-CAPS Spanish legal
-// text with a predictable vocabulary, so we restore the frequent words by dictionary and drop
-// any stray "�" that remains. Substring replacement handles trailing punctuation/plurals
-// (e.g. "P�BLICO" fixes both "PÚBLICO" and "PÚBLICOS").
-const MOJIBAKE: [string, string][] = [
-  ['ART�CULO', 'ARTÍCULO'], ['C�DIGO', 'CÓDIGO'], ['POL�TICA', 'POLÍTICA'],
-  ['P�BLICO', 'PÚBLICO'], ['REP�BLICA', 'REPÚBLICA'], ['C�MARA', 'CÁMARA'],
-  // -CIÓN / -SIÓN family
-  ['COMISI�N', 'COMISIÓN'], ['EMISI�N', 'EMISIÓN'], ['LEGISLACI�N', 'LEGISLACIÓN'],
-  ['PARTICIPACI�N', 'PARTICIPACIÓN'], ['DISPOSICI�N', 'DISPOSICIÓN'], ['SANCI�N', 'SANCIÓN'],
-  ['PROTECCI�N', 'PROTECCIÓN'], ['EDUCACI�N', 'EDUCACIÓN'], ['INFORMACI�N', 'INFORMACIÓN'],
-  ['REGULACI�N', 'REGULACIÓN'], ['ADMINISTRACI�N', 'ADMINISTRACIÓN'], ['CONSTITUCI�N', 'CONSTITUCIÓN'],
-  ['PENSI�N', 'PENSIÓN'], ['GESTI�N', 'GESTIÓN'], ['NACI�N', 'NACIÓN'],
-  ['TRIBUTACI�N', 'TRIBUTACIÓN'], ['CONTRIBUCI�N', 'CONTRIBUCIÓN'], ['PRESTACI�N', 'PRESTACIÓN'],
-]
-
-export function fixMojibake(s: string): string {
-  const fixed = MOJIBAKE.reduce((acc, [bad, good]) => acc.split(bad).join(good), s)
-  return fixed.replace(/�/g, '') // drop any accented char we couldn't restore
-}
+// Some rows arrive with accented bytes already replaced by U+FFFD ("�") — lost at the source, so
+// they can't be decoded back. We DON'T try to repair them here (a word list wouldn't cover new
+// cases): the title is stored as-is and the analyze step restores the accents with the LLM, which
+// generalizes to any word. See analyze.ts (title_fixed).
 
 // The set mixes ISO ("2022-07-21") and Colombian D/M/YYYY ("9/6/2018") in the same column.
 export function parseCongresoDate(raw: unknown): string | null {
@@ -52,12 +35,12 @@ export function mapCongresoRecord(raw: Record<string, unknown>): SourceNorm | nu
 
   const autor = clean(raw.autor)
   const comision = clean(raw.comision)
-  const estado = clean(raw.estado) && fixMojibake(clean(raw.estado)!)
+  const estado = clean(raw.estado)
 
   return {
     external_id: `congreso-senado-${nSenado.replace(/[^\w/-]/g, '')}`,
     source: 'congreso',
-    title: `Proyecto de Ley ${nSenado} — ${fixMojibake(titulo).replace(/^["“]|["”]$/g, '')}`,
+    title: `Proyecto de Ley ${nSenado} — ${titulo.replace(/^["“]|["”]$/g, '')}`,
     issuer: autor,
     norm_type: 'proyecto de ley',
     published_at: parseCongresoDate(raw.f_presentado),

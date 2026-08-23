@@ -1,18 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseCongresoDate, mapCongresoRecord, fixMojibake } from './congreso'
-
-describe('fixMojibake', () => {
-  it('restores common Spanish legal words from U+FFFD', () => {
-    expect(fixMojibake('COMISI�N')).toBe('COMISIÓN')
-    expect(fixMojibake('ART�CULO 522 DEL C�DIGO')).toBe('ARTÍCULO 522 DEL CÓDIGO')
-    expect(fixMojibake('PARTICIPACI�N POL�TICA')).toBe('PARTICIPACIÓN POLÍTICA')
-    expect(fixMojibake('HOSPITALES P�BLICOS')).toBe('HOSPITALES PÚBLICOS') // plural via substring
-  })
-  it('drops any � it cannot map instead of leaving it', () => {
-    expect(fixMojibake('COMERCIO)�')).toBe('COMERCIO)')
-    expect(fixMojibake('X�Z')).toBe('XZ')
-  })
-})
+import { parseCongresoDate, mapCongresoRecord } from './congreso'
 
 describe('parseCongresoDate', () => {
   it('passes ISO dates through', () => {
