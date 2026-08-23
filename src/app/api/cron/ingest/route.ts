@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { ingestAll } from '@/lib/ingest/ingest'
+import { ingestAll, SOURCES } from '@/lib/ingest/ingest'
 import { analyzeNorm } from '@/lib/ingest/analyze'
 
 export const maxDuration = 300
@@ -15,11 +15,13 @@ async function handle(req: NextRequest) {
   if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`)
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
-  // Optional ?limit=N — demo mode: bring only ~N per source (1 page) and analyze at most N.
-  // Keeps a manual/admin run small for the demo. Omit it and the cron behaves as before.
+  // Optional ?limit=N — demo mode: bring only ~N per source (1 page). `limit` is PER SOURCE,
+  // so a run ingests up to N × SOURCES norms; the analysis budget has to match that total or
+  // most freshly-ingested norms stay unanalyzed (and the match never alerts on them). Bounded
+  // by MAX_ANALYZED to keep the LLM cost/time of a manual run sane. Omit it → cron behaves as before.
   const limitParam = Number(new URL(req.url).searchParams.get('limit'))
   const demo = Number.isFinite(limitParam) && limitParam > 0
-  const analysisBudget = demo ? Math.min(limitParam, MAX_ANALYZED) : MAX_ANALYZED
+  const analysisBudget = demo ? Math.min(limitParam * SOURCES.length, MAX_ANALYZED) : MAX_ANALYZED
 
   // Per source: 15 rows per page, up to DEFAULT_PAGES (8). Bounded sources hand back
   // everything on page 0 and an empty page after that, so they stop on their own.
@@ -29,7 +31,14 @@ async function handle(req: NextRequest) {
   // Paginating brings many more norms per run, so the analysis budget went up and now
   // runs in concurrent batches — one at a time couldn't keep up and left a backlog
   // that took six runs to drain.
-  const { data: pending } = await db.from('norms').select('*').is('analyzed_at', null).limit(analysisBudget)
+  // Newest-published first: without an order the budget could be spent on stale backlog rows
+  // instead of the norms this run just brought in, so a demo run looked like it did nothing.
+  const { data: pending } = await db
+    .from('norms')
+    .select('*')
+    .is('analyzed_at', null)
+    .order('published_at', { ascending: false, nullsFirst: false })
+    .limit(analysisBudget)
 
   let analyzed = 0
   for (let i = 0; i < (pending ?? []).length; i += CONCURRENCY) {
