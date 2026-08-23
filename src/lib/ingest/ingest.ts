@@ -31,11 +31,13 @@ export type SourceStat = { fetched: number; nuevas: number; paginas: number; err
 export async function ingestAll(
   limitPerSource = 25,
   pages = DEFAULT_PAGES,
+  // Called after each source finishes (done/total), so a manual run can report fetch progress.
+  onSource?: (done: number, total: number, id: string) => void | Promise<void>,
 ): Promise<Record<string, SourceStat>> {
   const db = supabaseAdmin()
   const stats: Record<string, SourceStat> = {}
 
-  for (const src of SOURCES) {
+  for (const [index, src] of SOURCES.entries()) {
     const stat: SourceStat = { fetched: 0, nuevas: 0, paginas: 0 }
     stats[src.id] = stat
     try {
@@ -74,6 +76,8 @@ export async function ingestAll(
       stat.error = (e as Error).message.slice(0, 120)
       console.error(`source ${src.id} failed:`, e)
     }
+    // Reported whether the source succeeded or failed — the fetch phase still advanced.
+    await onSource?.(index + 1, SOURCES.length, src.id)
   }
   return stats
 }

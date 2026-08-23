@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { ingestAll, SOURCES } from '@/lib/ingest/ingest'
 import { analyzeNorm } from '@/lib/ingest/analyze'
+import { emitProgress } from '@/lib/ingest/progress'
 
 export const maxDuration = 300
 
@@ -19,13 +20,23 @@ async function handle(req: NextRequest) {
   // so a run ingests up to N × SOURCES norms; the analysis budget has to match that total or
   // most freshly-ingested norms stay unanalyzed (and the match never alerts on them). Bounded
   // by MAX_ANALYZED to keep the LLM cost/time of a manual run sane. Omit it → cron behaves as before.
-  const limitParam = Number(new URL(req.url).searchParams.get('limit'))
+  const url = new URL(req.url)
+  const limitParam = Number(url.searchParams.get('limit'))
   const demo = Number.isFinite(limitParam) && limitParam > 0
   const analysisBudget = demo ? Math.min(limitParam * SOURCES.length, MAX_ANALYZED) : MAX_ANALYZED
 
+  // ?run=<id> — the admin panel passes one so the fetch/analyze phases can be broadcast back
+  // to its progress bar. Absent (e.g. the cron), progress emission is a no-op.
+  const runId = url.searchParams.get('run')
+  const report = (p: Parameters<typeof emitProgress>[1]) => (runId ? emitProgress(runId, p) : undefined)
+
   // Per source: 15 rows per page, up to DEFAULT_PAGES (8). Bounded sources hand back
   // everything on page 0 and an empty page after that, so they stop on their own.
-  const sources = demo ? await ingestAll(Math.min(limitParam, 25), 1) : await ingestAll(15)
+  const sources = demo
+    ? await ingestAll(Math.min(limitParam, 25), 1, (done, total, source) =>
+        report({ phase: 'fetch', done, total, source }),
+      )
+    : await ingestAll(15)
   const db = supabaseAdmin()
 
   // Paginating brings many more norms per run, so the analysis budget went up and now
@@ -40,9 +51,12 @@ async function handle(req: NextRequest) {
     .order('published_at', { ascending: false, nullsFirst: false })
     .limit(analysisBudget)
 
+  const toAnalyze = pending ?? []
+  await report({ phase: 'analyze', done: 0, total: toAnalyze.length })
+
   let analyzed = 0
-  for (let i = 0; i < (pending ?? []).length; i += CONCURRENCY) {
-    const batch = (pending ?? []).slice(i, i + CONCURRENCY)
+  for (let i = 0; i < toAnalyze.length; i += CONCURRENCY) {
+    const batch = toAnalyze.slice(i, i + CONCURRENCY)
     const results = await Promise.allSettled(
       batch.map(async (norm) => {
         const a = await analyzeNorm(norm.title, norm.raw_text ?? norm.title)
@@ -53,6 +67,7 @@ async function handle(req: NextRequest) {
       if (r.status === 'fulfilled') analyzed++
       else console.error(`analyze failed for ${batch[j].external_id}:`, r.reason)
     })
+    await report({ phase: 'analyze', done: Math.min(i + CONCURRENCY, toAnalyze.length), total: toAnalyze.length })
   }
 
   const nuevas = Object.values(sources).reduce((n, s) => n + s.nuevas, 0)
@@ -60,6 +75,7 @@ async function handle(req: NextRequest) {
     .from('norms')
     .select('id', { count: 'exact', head: true })
     .is('analyzed_at', null)
+  await report({ phase: 'done', nuevas, analyzed, pendientes: pendientes ?? 0 })
   return NextResponse.json({ nuevas, analyzed, pendientes, sources })
 }
 
