@@ -7,29 +7,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { runManualUpdate, runManualNotification } from "./actions";
+import { sanitizeCount, isValidCount, clampCount, MIN, MAX, SOURCES } from "./count";
 
 export function AdminPanel() {
-  const [maxNews, setMaxNews] = useState(5);
+  // Kept as a string so the field can be emptied while typing — see ./count.ts.
+  const [maxNews, setMaxNews] = useState("5");
   const [pending, startTransition] = useTransition();
   const [action, setAction] = useState<"update" | "notify" | null>(null);
 
-  const onUpdate = () =>
+  const n = Number(maxNews);
+  const valid = isValidCount(maxNews);
+
+  const onUpdate = () => {
+    if (!valid) return;
+    setAction("update");
     startTransition(async () => {
-      setAction("update");
-      const r = await runManualUpdate(maxNews);
+      const r = await runManualUpdate(n);
       if (r.ok) toast.success("Ingesta iniciada", { description: "Corre en segundo plano (~1 min). Luego pulsa 'Ejecutar notificación'." });
       else toast.error(`No se pudo iniciar: ${r.error}`);
       setAction(null);
     });
+  };
 
-  const onNotify = () =>
+  const onNotify = () => {
+    setAction("notify");
     startTransition(async () => {
-      setAction("notify");
       const r = await runManualNotification();
       if (r.ok) toast.success("Notificación iniciada", { description: "Corre en segundo plano. Las alertas nuevas aparecen en el feed." });
       else toast.error(`No se pudo iniciar: ${r.error}`);
       setAction(null);
     });
+  };
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -40,19 +48,26 @@ export function AdminPanel() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="maxNews">Máx. noticias por fuente</Label>
+            <Label htmlFor="maxNews">Normas por fuente ({MIN}–{MAX})</Label>
             <Input
               id="maxNews"
               type="number"
-              min={1}
-              max={25}
+              inputMode="numeric"
+              min={MIN}
+              max={MAX}
               value={maxNews}
-              onChange={(e) => setMaxNews(Number(e.target.value))}
+              onChange={(e) => setMaxNews(sanitizeCount(e.target.value))}
+              onBlur={() => setMaxNews(clampCount(maxNews))}
               disabled={pending}
+              aria-invalid={!valid}
             />
-            <p className="text-xs text-muted-foreground">Mantenlo bajo (ej. 5) para la demo.</p>
+            <p className="text-xs text-muted-foreground">
+              {valid
+                ? `Hasta ${n} por fuente — unas ${n * SOURCES} normas en total. Mantenlo bajo (5) para la demo.`
+                : `Escribe un número entre ${MIN} y ${MAX}.`}
+            </p>
           </div>
-          <Button onClick={onUpdate} disabled={pending} className="w-full">
+          <Button onClick={onUpdate} disabled={pending || !valid} className="w-full">
             {pending && action === "update" ? "Iniciando…" : "Ejecutar ingesta"}
           </Button>
         </CardContent>
