@@ -19,6 +19,7 @@ const SOURCES: Record<string, Source> = {
   dian: { label: 'Normograma DIAN' },
   superfinanciera: { label: 'Superintendencia Financiera' },
   sic: { label: 'Superintendencia de Industria y Comercio' },
+  congreso: { label: 'Congreso — Senado de la República' },
   seed: { label: 'Datos de ejemplo' },
 }
 

@@ -2,7 +2,7 @@
 export const MIN = 1;
 export const MAX = 25;
 /** Sources walked per run — only used to tell the admin what the number will cost. */
-export const SOURCES = 7;
+export const SOURCES = 8;
 
 /**
  * What the field accepts while typing.
