@@ -6,6 +6,19 @@ import { analyzeNorm } from './analyze'
 const MAX_ANALYZED = 40
 const CONCURRENCY = 5
 
+/**
+ * Splice the model's per-"�" replacement letters back into the title. Only the "�" positions
+ * change — the rest of the string is untouched — so the model can restore accents on any word
+ * (no dictionary) without being able to restructure the title. If the count doesn't match what the
+ * model returned, we leave the title as-is rather than guess.
+ */
+export function repairTitle(title: string, accents?: string[]): string {
+  const holes = (title.match(/�/g) ?? []).length
+  if (!holes || !accents || accents.length !== holes) return title
+  let i = 0
+  return title.replace(/�/g, () => accents[i++] ?? '�')
+}
+
 // A single 0→100 run reported step by step: fetch (x/sources) then analyze (x/N) then done.
 export type IngestProgress =
   | { phase: 'fetch'; done: number; total: number; source: string }
@@ -60,8 +73,11 @@ export async function runIngest(
     const batch = toAnalyze.slice(i, i + CONCURRENCY)
     const results = await Promise.allSettled(
       batch.map(async (norm) => {
-        const a = await analyzeNorm(norm.title, norm.raw_text ?? norm.title)
-        await db.from('norms').update({ ...a, analyzed_at: new Date().toISOString() }).eq('id', norm.id)
+        const { title_accents, ...analysis } = await analyzeNorm(norm.title, norm.raw_text ?? norm.title)
+        const patch: Record<string, unknown> = { ...analysis, analyzed_at: new Date().toISOString() }
+        const title = repairTitle(norm.title, title_accents)
+        if (title !== norm.title) patch.title = title
+        await db.from('norms').update(patch).eq('id', norm.id)
       }),
     )
     results.forEach((r, j) => {

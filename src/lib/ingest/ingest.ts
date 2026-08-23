@@ -6,10 +6,11 @@ import { sic } from './sources/sic'
 import { legalize } from './sources/legalize'
 import { corteConstitucional } from './sources/corte-constitucional'
 import { croma } from './sources/croma'
+import { congreso } from './sources/congreso'
 import type { SourceAdapter, SourceNorm } from './types'
 
 // Adding a new source (leychile, diario oficial...) = 1 file in sources/ + 1 line here.
-export const SOURCES: SourceAdapter[] = [suin, dian, superfinanciera, sic, legalize, corteConstitucional, croma]
+export const SOURCES: SourceAdapter[] = [suin, dian, superfinanciera, sic, legalize, corteConstitucional, croma, congreso]
 
 /** Pages to walk per source per run. Sources that can't paginate stop after page 1. */
 const DEFAULT_PAGES = 8

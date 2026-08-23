@@ -32,6 +32,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   // Navigation items
   const navItems = [
     { label: "Alertas", href: "/feed" },
+    { label: "En trámite", href: "/en-tramite" },
     { label: "Configuración", href: "/settings" },
     { label: "API Keys", href: "/keys" },
     ...(isAdmin ? [{ label: "Admin", href: "/admin" }] : []),

@@ -2,6 +2,9 @@ export type SourceNorm = {
   external_id: string; source: string; title: string; issuer: string | null
   norm_type: string | null; published_at: string | null; url: string | null
   raw_text: string
+  // Omitted by sources of norms already in force → the DB default ('vigente') applies.
+  // Sources of bills still being debated (e.g. Congreso) set 'en_tramite'.
+  status?: 'vigente' | 'en_tramite'
 }
 
 // Each regulation source is a file that implements this and registers itself in ingest.ts.

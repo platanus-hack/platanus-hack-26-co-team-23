@@ -15,8 +15,8 @@ y portales que ningún software puede leer. El resultado:
 complAI convierte la normativa colombiana en un **agente que trabaja para tu empresa**:
 
 1. **Ingesta multi-fuente**: SUIN-Juriscol, Normograma DIAN (texto completo), circulares de
-   la Superfinanciera, repositorio de la SIC y la Corte Constitucional — todo normalizado a
-   un solo esquema.
+   la Superfinanciera, repositorio de la SIC, la Corte Constitucional y los **proyectos de ley
+   del Congreso** (Cámara de Representantes) — todo normalizado a un solo esquema.
 2. **Estructuración con IA**: cada norma se vuelve dato — qué cambia, a quién obliga, qué
    obligaciones concretas crea (con plazo) y qué tan grave es incumplirla.
 3. **Matching por perfil**: registras tu empresa (tipo de sociedad + sectores) y complAI
@@ -28,6 +28,11 @@ complAI convierte la normativa colombiana en un **agente que trabaja para tu emp
 5. **Cumplimiento en código** (plan PRO): el agente analiza tu repositorio en GitHub,
    encuentra dónde tu software incumple la nueva norma y **abre un Pull Request con el fix**,
    asignado a tu Tech Lead como revisor. complAI propone — el humano siempre aprueba.
+6. **Radar proactivo — "En trámite"**: complAI no solo reacciona a lo que ya es ley; también
+   trae los **proyectos de ley que aún se están debatiendo** en el Congreso, para que tu
+   empresa se adelante a lo que viene. Cada proyecto se trabaja como un post: tu equipo deja
+   su **postura (a favor / en contra)**, privada por organización — de la alerta reactiva a la
+   incidencia proactiva.
 
 ## Acceso para agentes (track ACCESS)
 

@@ -15,7 +15,13 @@ export type Norm = {
   summary: string | null; sectors: string[]; company_types: string[]
   obligations: Obligation[]; severity: 'info' | 'low' | 'medium' | 'high' | null
   analyzed_at: string | null
+  status: 'vigente' | 'en_tramite'
 }
+
+export type VoteChoice = 'favor' | 'contra'
+
+// Aggregate of an org's votes on a proposed norm, plus the current user's own choice.
+export type VoteTally = { favor: number; contra: number; mine: VoteChoice | null }
 
 export const CHANNEL_TYPES = ['slack', 'google_chat', 'discord', 'teams', 'email', 'whatsapp', 'voice'] as const
 export type ChannelType = (typeof CHANNEL_TYPES)[number]
