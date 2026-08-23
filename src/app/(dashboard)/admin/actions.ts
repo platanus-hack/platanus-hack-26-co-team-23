@@ -13,11 +13,13 @@ async function assertAdmin() {
   if (orgRole !== "org:admin") throw new Error("Solo administradores");
 }
 
-/** Manual update: run the ingest in the background, capped to `maxNews` per source. */
-export async function runManualUpdate(maxNews: number): Promise<{ ok: boolean; error?: string }> {
+/** Manual update: run the ingest in the background, capped to `maxNews` per source.
+ *  `runId` (from the client) lets the ingest broadcast progress back to the panel's bar. */
+export async function runManualUpdate(maxNews: number, runId?: string): Promise<{ ok: boolean; error?: string }> {
   await assertAdmin();
   const n = Math.max(1, Math.min(Math.floor(Number(maxNews) || 5), 25));
-  const url = `${appUrl()}/api/cron/ingest?limit=${n}`;
+  const run = runId ? `&run=${encodeURIComponent(runId)}` : "";
+  const url = `${appUrl()}/api/cron/ingest?limit=${n}${run}`;
   const secret = process.env.CRON_SECRET;
   after(async () => {
     try {
